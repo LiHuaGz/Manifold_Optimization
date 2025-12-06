@@ -1,282 +1,298 @@
 import os
+import time
+import numpy as np
+import matplotlib.pyplot as plt
 
-# --- 优化 1: 必须在 import numpy 之前设置环境变量 ---
-# 这样才能确保 OpenBLAS/MKL 正确读取配置
+# --- 环境配置 ---
 num_cores = os.cpu_count()
 os.environ['OMP_NUM_THREADS'] = str(num_cores)
 os.environ['MKL_NUM_THREADS'] = str(num_cores)
 os.environ['OPENBLAS_NUM_THREADS'] = str(num_cores)
-# ------------------------------------------------
-
-import numpy as np
-import matplotlib.pyplot as plt
-import time
 
 print(f"检测到 CPU 核心数: {num_cores}, 线程环境已配置。")
 
-# 配置matplotlib以支持中文显示
-plt.rcParams['font.sans-serif'] = ['SimHei']  # 使用黑体
-plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+# 配置绘图
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['axes.unicode_minus'] = False
+# 配置绘图 (使用默认英文字体，避免兼容性问题)
+plt.rcParams.update(plt.rcParamsDefault)
+# 或者直接删除上面那两行 SimHei 的配置
 
-def stiefel_retraction(X, Z, svd=True):
-    # X: 当前点,Z: 切空间方向
-    if svd:
-        U, _, Vt = np.linalg.svd(X + Z, full_matrices=False)
-        return U @ Vt
-    else:
-        # QR分解
-        Q, _ = np.linalg.qr(X + Z)
-        return Q
 
-def compute_f_and_AX(X, A, B):
+class StiefelManifold:
     """
-    【计算优化核心】
-    利用 A 的对称性计算 AX。
+    Stiefel 流形基础运算工具类
     """
-    AX = A @ X  # np.dot(A, X) 也可以，因为 A 是对称的全矩阵
-    
-    val = np.sum(X * AX) + 2 * np.sum(B * X)
-    return val, AX
+    @staticmethod
+    def retraction(X, Z, method='svd'):
+        """将切空间向量 Z 映射回流形"""
+        if method == 'svd':
+            U, _, Vt = np.linalg.svd(X + Z, full_matrices=False)
+            return U @ Vt
+        else:
+            Q, _ = np.linalg.qr(X + Z)
+            return Q
 
-class Stiefel_Optimizer:
+    @staticmethod
+    def project_gradient(X, G):
+        """
+        将欧氏梯度 G 投影到 X 处的切空间
+        Proj(G) = G - X @ sym((X.T @ G))
+        """
+        XTG = X.T @ G
+        sym = (XTG + XTG.T) / 2
+        return G - X @ sym
+
+
+class QuadraticProblem:
+    """
+    定义问题: min Tr(X.T A X) + 2 Tr(B.T X)
+    负责计算函数值、梯度，并缓存 AX 矩阵以提高效率。
+    """
     def __init__(self, n, p, A, B):
         self.n = n
         self.p = p
         self.A = A
         self.B = B
 
-    def compute_grad_from_AX(self, X, AX):
-        """利用已知的 AX 计算梯度"""
+    def compute_cost_and_cache(self, X):
+        """计算 f(X) 并返回中间变量 AX 以供梯度计算使用"""
+        AX = self.A @ X
+        # 优化计算: Tr(X.T A X) = sum(X * AX)
+        val = np.sum(X * AX) + 2 * np.sum(self.B * X)
+        return val, AX
+
+    def compute_euclidean_grad(self, X, AX):
+        """利用缓存的 AX 计算欧氏梯度"""
         return 2 * (AX + self.B)
 
-    def project_grad_stiefel(self, X, G):
+
+class LineSearch:
+    """
+    非单调 Armijo 线搜索
+    """
+    def __init__(self, problem, num_history=2, rho=0.5, c=1e-4, max_ls_iters=20):
+        self.problem = problem
+        self.history = []
+        self.num_history = num_history
+        self.rho = rho
+        self.c = c
+        self.max_ls_iters = max_ls_iters
+
+    def search(self, X, f_val, AX, grad_proj, search_dir, initial_step, grad_norm_sq):
         """
-        投影梯度到切空间。
-        利用 X.T @ G 是 p x p 矩阵的特性优化。
+        执行线搜索
+        Returns: X_new, f_new, AX_new, step_size, success
         """
-        XTG = X.T @ G
-        # sym 是对称阵，(XTG + XTG.T) / 2
-        sym = (XTG + XTG.T) / 2
-        return G - X @ sym
+        # 记录历史最大值用于非单调搜索
+        self.history.append(f_val)
+        if len(self.history) > self.num_history:
+            self.history.pop(0)
+        f_ref = max(self.history)
 
-    def gradient_descent(self, X_init, max_iters=1000, tol=1e-6, num_history=2, search_method='armijo', alpha_min=1e-5, alpha_max=1e5, t_init_guess=1.0):
+        t = initial_step
         
-        # 初始化
-        X = X_init
-        f_val, AX = compute_f_and_AX(X, self.A, self.B)
-        
-        f_vals = []
-        f_vals.append(f_val)
-        
-        # 记录 BB 步长所需的旧变量
-        X_prev = None
-        grad_proj_prev = None
-        
-        t = t_init_guess
-        
-        for i in range(max_iters):
-            # 1. 计算梯度 (利用缓存的 AX)
-            grad = self.compute_grad_from_AX(X, AX)
+        for _ in range(self.max_ls_iters):
+            try:
+                # 尝试更新点
+                X_new = StiefelManifold.retraction(X, t * search_dir)
+                f_new, AX_new = self.problem.compute_cost_and_cache(X_new)
+                
+                # Armijo 条件 (使用 grad_norm_sq 近似方向导数，假设方向为下降方向)
+                # 严格来说应为 c * t * <grad, dir>，在 GD 中 <grad, -grad> = -norm^2
+                # 在 LBFGS 中需保证方向下降性。这里沿用原始逻辑。
+                descent_term = self.c * t * np.sum(grad_proj * search_dir)
+                
+                # 如果是 GD, search_dir = -grad_proj, descent_term = -c * t * norm_sq
+                # 为了兼容通用性，直接计算点积
+                if f_new <= f_ref + descent_term:
+                    return X_new, f_new, AX_new, t, True
+                
+            except np.linalg.LinAlgError:
+                pass # SVD 可能失败，虽罕见，缩小步长重试
             
-            # 2. 投影梯度
-            grad_proj = self.project_grad_stiefel(X, grad)
-            
-            # 3. 收敛性检查 (Frobenius norm)
-            grad_norm_sq = np.sum(grad_proj**2) # 比 linalg.norm 快，且平方和用于 Armijo
-            grad_norm = np.sqrt(grad_norm_sq)
-            
-            if grad_norm < tol:
-                print(f"Converged at iter {i}, grad_norm: {grad_norm:.2e}")
-                break
+            t *= self.rho
 
-            # 4. 确定步长 (BB Step or Constant/Armijo init)
-            if search_method == 'BB_step' and i > 0:
-                # 向量化计算 s 和 y 的点积，避免 flatten() 的拷贝
-                s = X - X_prev
-                y = grad_proj - grad_proj_prev
-                
-                ss = np.sum(s * s)
-                sy = np.abs(np.sum(s * y))
-                yy = np.sum(y * y)
-                
-                # Barzilai-Borwein step sizes
-                if i % 2 == 0:
-                    alpha = ss / sy if sy > 1e-10 else t
-                else:
-                    alpha = sy / yy if yy > 1e-10 else t
-                
-                # 截断
-                t = min(alpha_max, max(alpha_min, alpha))
-            else:
-                t = t_init_guess # 重置初始步长猜测
+        # 线搜索失败，保持原位
+        return X, f_val, AX, 0.0, False
 
-            # 5. 线搜索 (Non-monotone Armijo)
-            # 记录历史最大值
-            start_idx = max(0, len(f_vals) - num_history)
-            f_ref = max(f_vals[start_idx:])
-            
-            # Armijo 参数
-            rho = 0.5
-            c = 1e-4
-            
-            step_found = False
-            for _ in range(20): # max line search iters
-                # 使用 QR Retraction
-                X_new = stiefel_retraction(X, -t * grad_proj)
-                
-                # 计算新点的函数值 (同时拿到新的 AX_new)
-                f_new, AX_new = compute_f_and_AX(X_new, self.A, self.B)
-                
-                if f_new <= f_ref - c * t * grad_norm_sq:
-                    step_found = True
-                    break
-                t *= rho
-            
-            # 更新变量
-            if not step_found:
-                # 极其罕见的情况，步长缩减到极小
-                X_new = X
-                AX_new = AX
-                f_new = f_val
-            
-            # 保存用于下一次 BB 步长计算
-            X_prev = X
-            grad_proj_prev = grad_proj
-            
-            # 更新当前点
-            X = X_new
-            AX = AX_new # 关键：传递缓存的矩阵乘积结果
-            f_val = f_new
-            f_vals.append(f_val)
 
-        return X, f_vals
+# --- 策略模块: 搜索方向 ---
+
+class DirectionStrategy:
+    def compute_direction(self, grad_proj):
+        raise NotImplementedError
     
-    def L_BFGS(self, X_init, max_iters=1000, tol=1e-6, num_history=2, search_method='armijo', alpha_min=1e-5, alpha_max=1e5, t_init_guess=1.0, m=10):
-        '''
-        Stiefel 流形上的 L-BFGS 方法 (修正版)
-        '''
-        def L_BFGS_two_loop_recursion(grad_proj, diff_history, grad_history):
-            if len(diff_history) == 0:
-                return -grad_proj
-            
-            # 确保分母不为0
-            denom = np.sum(grad_history[-1] * grad_history[-1])
-            if denom < 1e-20:
-                gamma = 1.0
-            else:
-                gamma = np.sum(diff_history[-1] * grad_history[-1]) / denom
+    def update(self, s, y):
+        pass
 
-            q = grad_proj.copy()
-            alpha_list = [None] * len(diff_history)
-            rho_list = [None] * len(diff_history)
-            
-            for i in reversed(range(len(diff_history))):
-                s, y = diff_history[i], grad_history[i]
-                sy = np.sum(y * s)
-                if abs(sy) < 1e-20: # 安全检查
-                    rho = 1.0
-                else:
-                    rho = 1.0 / sy
-                    
-                alpha = rho * np.sum(s * q)
-                alpha_list[i], rho_list[i] = alpha, rho
-                q -= alpha * y
-                
-            r = q * gamma
-            for i in range(len(diff_history)):
-                s, y = diff_history[i], grad_history[i]
-                rho = rho_list[i]
-                beta = rho * np.sum(y * r)
-                alpha = alpha_list[i]
-                r += s * (alpha - beta)
-            return -r
+class SteepestDescent(DirectionStrategy):
+    def compute_direction(self, grad_proj):
+        return -grad_proj
 
-        # 初始化
+class LBFGS(DirectionStrategy):
+    def __init__(self, m=10):
+        self.m = m
+        self.s_history = []
+        self.y_history = []
+
+    def compute_direction(self, grad_proj):
+        # 双循环递归 (Two-loop recursion)
+        if not self.s_history:
+            return -grad_proj
+
+        q = grad_proj.copy()
+        alphas = []
+        
+        # Backward pass
+        for s, y in zip(reversed(self.s_history), reversed(self.y_history)):
+            rho = 1.0 / np.sum(y * s) if np.abs(np.sum(y * s)) > 1e-20 else 1.0
+            alpha = rho * np.sum(s * q)
+            alphas.append(alpha)
+            q -= alpha * y
+            
+        # Scaling
+        s_last, y_last = self.s_history[-1], self.y_history[-1]
+        gamma = np.sum(s_last * y_last) / np.sum(y_last * y_last) if np.sum(y_last * y_last) > 1e-20 else 1.0
+        r = gamma * q
+        
+        # Forward pass
+        for s, y, alpha in zip(self.s_history, self.y_history, reversed(alphas)):
+            rho = 1.0 / np.sum(y * s) if np.abs(np.sum(y * s)) > 1e-20 else 1.0
+            beta = rho * np.sum(y * r)
+            r += s * (alpha - beta)
+            
+        return -r
+
+    def update(self, s, y):
+        # 曲率条件检查 s^T y > 0
+        if np.sum(s * y) > 1e-10:
+            if len(self.s_history) >= self.m:
+                self.s_history.pop(0)
+                self.y_history.pop(0)
+            self.s_history.append(s)
+            self.y_history.append(y)
+
+
+# --- 策略模块: 步长选择 ---
+
+class StepSizeStrategy:
+    def get_initial_step(self, current_t, iter_idx, s=None, y=None):
+        return 1.0
+
+class FixedStep(StepSizeStrategy):
+    def __init__(self, initial_guess=1.0):
+        self.guess = initial_guess
+
+    def get_initial_step(self, current_t, iter_idx, s=None, y=None):
+        # L-BFGS 通常每次重置为 1.0，GD 如果不是 BB 则重置为默认猜测
+        return self.guess
+
+class BBStep(StepSizeStrategy):
+    def __init__(self, alpha_min=1e-5, alpha_max=1e5):
+        self.alpha_min = alpha_min
+        self.alpha_max = alpha_max
+
+    def get_initial_step(self, current_t, iter_idx, s=None, y=None):
+        if iter_idx == 0 or s is None or y is None:
+            return 1.0
+        
+        ss = np.sum(s * s)
+        sy = np.abs(np.sum(s * y))
+        yy = np.sum(y * y)
+        
+        if iter_idx % 2 == 0:
+            alpha = ss / sy if sy > 1e-10 else current_t
+        else:
+            alpha = sy / yy if yy > 1e-10 else current_t
+            
+        return min(self.alpha_max, max(self.alpha_min, alpha))
+
+
+# --- 统一求解器 ---
+
+class StiefelSolver:
+    def __init__(self, n, p, A, B):
+        self.problem = QuadraticProblem(n, p, A, B)
+        self.n = n
+        self.p = p
+
+    def solve(self, X_init, direction_strategy, step_strategy, max_iters=1000, tol=1e-6):
         X = X_init
-        f_val, AX = compute_f_and_AX(X, self.A, self.B)
+        f_val, AX = self.problem.compute_cost_and_cache(X)
         f_vals = [f_val]
         
-        # 状态变量
-        s_last = None         # 存储上一步的 s
-        grad_proj_last = None # 存储上一步的梯度
+        grad_proj_prev = None
+        X_prev = None
+        current_step = 1.0
         
-        diff_history, grad_history = [], []
-        t = t_init_guess
+        # 记录初始梯度范数，用于相对误差判定
+        initial_grad_norm = None
         
+        ls = LineSearch(self.problem)
+        print(f"Start Opt: Dir={direction_strategy.__class__.__name__}, Step={step_strategy.__class__.__name__}")
+
         for i in range(max_iters):
-            # 1. 计算当前梯度
-            grad = self.compute_grad_from_AX(X, AX)
-            grad_proj = self.project_grad_stiefel(X, grad)
+            grad = self.problem.compute_euclidean_grad(X, AX)
+            grad_proj = StiefelManifold.project_gradient(X, grad)
             
-            # 2. 延迟更新历史信息 (在获得新梯度后，配对 s_{k-1} 和 y_{k-1})
-            if s_last is not None and grad_proj_last is not None:
-                # y_{k-1} = grad(X_k) - grad(X_{k-1})
-                y_last = grad_proj - grad_proj_last
-                
-                # 曲率条件检查 (s^T y > 0)
-                sy = np.sum(y_last * s_last)
-                if sy > 1e-10: # 只有当曲率满足正定条件时才更新
-                    if len(diff_history) >= m:
-                        diff_history.pop(0)
-                        grad_history.pop(0)
-                    diff_history.append(s_last)
-                    grad_history.append(y_last)
-            
-            # 3. 收敛性检查
             grad_norm_sq = np.sum(grad_proj**2)
             grad_norm = np.sqrt(grad_norm_sq)
             
-            if grad_norm < tol:
-                print(f"Converged at iter {i}, grad_norm: {grad_norm:.2e}")
+            # --- 改进 1: 相对误差判定 ---
+            if initial_grad_norm is None:
+                initial_grad_norm = grad_norm
+                print(f"  Init Grad Norm: {initial_grad_norm:.2e}")
+            
+            # 判定标准：梯度范数小于绝对阈值 OR 相比初始梯度下降了 1e-6 倍
+            if grad_norm < tol or grad_norm < tol * initial_grad_norm:
+                print(f"  Converged at iter {i}, grad_norm: {grad_norm:.2e}")
                 break
-            
-            # 4. 计算搜索方向
-            search_direction = L_BFGS_two_loop_recursion(grad_proj, diff_history, grad_history)
-            
-            # L-BFGS 通常默认步长为 1.0，不需要 BB step 调整初始步长，除非为了特殊目的
-            # 这里重置为 1.0 (或者 t_init_guess)
-            t = 1.0 
 
-            # 5. 线搜索 (Armijo)
-            start_idx = max(0, len(f_vals) - num_history)
-            f_ref = max(f_vals[start_idx:])
-            rho = 0.5
-            c = 1e-4
-            
-            step_found = False
-            for _ in range(20):
-                # 尝试更新
-                try:
-                    X_new = stiefel_retraction(X, t * search_direction)
-                except np.linalg.LinAlgError:
-                    t *= rho
-                    continue
+            s, y = None, None
+            if i > 0:
+                s = X - X_prev
+                y = grad_proj - grad_proj_prev
+                direction_strategy.update(s, y)
 
-                f_new, AX_new = compute_f_and_AX(X_new, self.A, self.B)
+            t_guess = step_strategy.get_initial_step(current_step, i, s, y)
+            direction = direction_strategy.compute_direction(grad_proj)
+
+            X_new, f_new, AX_new, t_actual, success = ls.search(
+                X, f_val, AX, grad_proj, direction, t_guess, grad_norm_sq
+            )
+
+            # --- 改进 2: L-BFGS 重启机制 ---
+            if not success:
+                # 如果是 L-BFGS 且失败了，尝试清空历史重启，而不是直接退出
+                if isinstance(direction_strategy, LBFGS) and len(direction_strategy.s_history) > 0:
+                    print(f"  Line search stuck at iter {i}. Restarting L-BFGS...")
+                    direction_strategy.s_history = []
+                    direction_strategy.y_history = []
+                    # 重新尝试用纯梯度方向搜索
+                    direction = -grad_proj
+                    t_guess = 1.0 
+                    X_new, f_new, AX_new, t_actual, success = ls.search(
+                        X, f_val, AX, grad_proj, direction, t_guess, grad_norm_sq
+                    )
                 
-                if f_new <= f_ref - c * t * grad_norm_sq: # 注意：严格来说Armijo应用方向导数，这里简化用 grad_norm_sq 近似
-                    step_found = True
+                if not success:
+                    print(f"  Line search failed completely at iter {i}")
                     break
-                t *= rho
+
+            X_prev = X
+            grad_proj_prev = grad_proj
             
-            if not step_found:
-                X_new = X
-                AX_new = AX
-                f_new = f_val
-                # 步长过小导致无法更新，通常意味着收敛或陷入死角，清空历史重试是个好策略
-                diff_history, grad_history = [], [] 
-            
-            # 6. 保存用于下一次迭代的状态
-            # 记录 s_k = X_{k+1} - X_k
-            s_last = X_new - X
-            # 记录 grad_k (注意：这里保存的是投影梯度)
-            grad_proj_last = grad_proj
-            
-            # 更新变量
             X = X_new
-            AX = AX_new
             f_val = f_new
+            AX = AX_new
+            current_step = t_actual
+            
             f_vals.append(f_val)
+            
+            # 调试打印
+            if i % 100 == 0:
+                print(f"  Iter {i}: f={f_val:.4e}, |g|={grad_norm:.2e}")
 
         return X, f_vals
 
@@ -288,35 +304,39 @@ def main():
     np.random.seed(42)
     A_raw = np.random.rand(n, n)
     A = A_raw.T @ A_raw
-    B = np.zeros((n, p)) # B 设为非零更有趣，不过保持原逻辑
+    #B = np.random.randn(n, p)
+    B = np.zeros((n, p))
     
     x0, _ = np.linalg.qr(np.random.randn(n, p))
     
-    optimizer = Stiefel_Optimizer(n, p, A, B)
+    solver = StiefelSolver(n, p, A, B)
     
-    
-    # --- 1. Armijo ---
+    # --- 1. Armijo (普通梯度下降 + 固定/Armijo步长猜测) ---
     start = time.time()
-    _, f_vals_armijo = optimizer.gradient_descent(x0, search_method='armijo', max_iters=2000)
+    # 策略: 梯度方向 + 固定初始步长1.0 (然后由线搜索缩减)
+    _, f_vals_armijo = solver.solve(x0, SteepestDescent(), FixedStep(1.0), max_iters=2000)
     print(f"Armijo Time: {time.time() - start:.4f}s, min f: {min(f_vals_armijo):.6f}")
     
-    # --- 2. BB Step ---
+    # --- 2. BB Step (梯度下降 + BB步长) ---
     start = time.time()
-    _, f_vals_bb = optimizer.gradient_descent(x0, search_method='BB_step', max_iters=2000)
+    _, f_vals_bb = solver.solve(x0, SteepestDescent(), BBStep(), max_iters=2000)
     print(f"BB Step Time: {time.time() - start:.4f}s, min f: {min(f_vals_bb):.6f}")
 
-    # --- 3. L-BFGS ---
+    # --- 3. L-BFGS (L-BFGS方向 + 固定初始步长1.0) ---
     start = time.time()
-    _, f_vals_lbfgs = optimizer.L_BFGS(x0, search_method='BB_step', max_iters=2000, m=10)
+    _, f_vals_lbfgs = solver.solve(x0, LBFGS(m=10), FixedStep(1.0), max_iters=2000)
     print(f"L-BFGS Time: {time.time() - start:.4f}s, min f: {min(f_vals_lbfgs):.6f}")
     
     # 绘图比较
     plt.figure(figsize=(10, 6))
-    plt.semilogy(f_vals_armijo, label='Armijo')
-    plt.semilogy(f_vals_bb, label='BB Step')
+    plt.semilogy(f_vals_armijo, label='GD (Armijo)')
+    plt.semilogy(f_vals_bb, label='GD (BB Step)')
     plt.semilogy(f_vals_lbfgs, label='L-BFGS')
     plt.legend()
-    plt.title('Optimization Convergence')
+    plt.title('Optimization Convergence Comparison')
+    plt.xlabel('Iteration')
+    plt.ylabel('Cost Value (log scale)')
+    plt.grid(True, which="both", ls="--", alpha=0.5)
     plt.show()
 
 if __name__ == "__main__":
