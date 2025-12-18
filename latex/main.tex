@@ -275,4 +275,57 @@ Scipy SLSQP & 28 & 0.0815 & -243.1054 \\ \hline
     \item \textbf{计算优势}：对于中小规模的流形约束优化问题，利用积极集法求解切空间子问题可以精确地识别当前起作用的约束，这对于处理包含复杂不等式约束（如非负正交矩阵约束）的流形问题尤为重要。
 \end{itemize}
 
+\section{流形拟牛顿法的改进策略}
+
+在黎曼流形 $\mathcal{M}$ 上的拟牛顿法中，为了提高算法在非凸问题上的鲁棒性以及在大规模问题上的计算效率，常采用阻尼技术和子空间技术。以下分别对这两种方法进行总结。
+
+\subsection{阻尼 L-BFGS 更新 (Damped L-BFGS)}
+
+在拟牛顿法中，为保证拟牛顿矩阵 $B_{k+1}$（或其逆 $H_{k+1}$）的正定性，必须满足曲率条件 $s_k^{\mathrm{T}} y_k > 0$，其中 $s_k$ 为位移向量，$y_k$ 为梯度差向量。然而，当步长由非精确线搜索确定时，该条件可能不成立。为此，采用阻尼技术对梯度差向量进行修正。
+
+根据文献描述，给定对称正定矩阵 $B_k$、位移向量 $s_k$ 和梯度差 $y_k$，我们构造修正向量 $r_k$ 来代替 $y_k$：
+\begin{equation}
+    r_k = \theta_k y_k + (1 - \theta_k) B_k s_k,
+\end{equation}
+其中 $\theta_k \in [0, 1]$ 是确保 $B_{k+1}$ 保持正定的参数，定义如下：
+\begin{equation}
+    \theta_k = 
+    \begin{cases}
+    1, & \text{若 } s_k^{\mathrm{T}} y_k \ge 0.25 s_k^{\mathrm{T}} B_k s_k, \\
+    \frac{0.75 s_k^{\mathrm{T}} B_k s_k}{s_k^{\mathrm{T}} B_k s_k - s_k^{\mathrm{T}} y_k}, & \text{若 } s_k^{\mathrm{T}} y_k < 0.25 s_k^{\mathrm{T}} B_k s_k.
+    \end{cases}
+\end{equation}
+该构造保证了 $s_k^{\mathrm{T}} r_k \ge 0.25 s_k^{\mathrm{T}} B_k s_k > 0$，即修正后的曲率条件严格成立。在实际的 L-BFGS 算法中，通常取 $B_k$ 为初始近似矩阵（如 $B_{k,0} = \delta I$）。利用修正后的对 $(s_k, r_k)$ 执行标准的 BFGS 更新公式：
+\begin{equation}
+    B_{k+1} = B_k - \frac{B_k s_k s_k^{\mathrm{T}} B_k}{s_k^{\mathrm{T}} B_k s_k} + \frac{r_k r_k^{\mathrm{T}}}{s_k^{\mathrm{T}} r_k}.
+\end{equation}
+此方法能够有效防止拟牛顿矩阵在非凸区域失去正定性，从而增强算法的稳定性。
+
+\subsection{子空间方法 (Subspace Methods)}
+
+在大规模流形优化问题中，直接存储和更新 $n \times n$ 的拟牛顿矩阵代价过高。子空间方法的核心思想是将拟牛顿矩阵 $H_k$ 投影到由历史梯度信息张成的低维子空间 $G_k$ 上，仅更新一个小规模矩阵 $\bar{H}_k$。
+
+定义梯度向量 $g_0, \cdots, g_k$ 张成的线性子空间为：
+\begin{equation}
+    G_k = \mathrm{span}\{g_0, \cdots, g_k\}, \quad \forall k \ge 0.
+\end{equation}
+设 $l_k$ 为子空间 $G_k$ 的维数。令 $Z_k \in \mathbb{R}^{n \times l_k}$ 为 $G_k$ 的一组单位正交基，即 $Z_k^{\mathrm{T}} Z_k = I_{l_k}$。将梯度 $g_k$ 和拟牛顿矩阵 $H_k$ 投影到子空间，定义：
+\begin{equation}
+    \bar{g}_k = Z_k^{\mathrm{T}} g_k \in \mathbb{R}^{l_k}, \quad \bar{H}_k = Z_k^{\mathrm{T}} H_k Z_k \in \mathbb{R}^{l_k \times l_k}.
+\end{equation}
+在此框架下，搜索方向 $p_k = -H_k g_k$ 可以通过低维计算得到：
+\begin{equation}
+    H_k g_k = Z_k \bar{H}_k \bar{g}_k.
+\end{equation}
+这意味着迭代公式可以写为 $x_{k+1} = x_k - \alpha_k Z_k \bar{H}_k \bar{g}_k$。当 $l_k \ll n$ 时，更新 $\bar{H}_k$ 的计算量远小于更新 $H_k$。
+
+算法的关键在于从 $\bar{H}_k$ 递推得到 $\bar{H}_{k+1}$。通过引入辅助向量 $\phi_{k+1}$ 和 $u_{k+1}$：
+\begin{equation}
+    \phi_{k+1} = \|(I - Z_k Z_k^{\mathrm{T}}) g_{k+1}\|, \quad u_k = Z_k^{\mathrm{T}} g_{k+1}.
+\end{equation}
+如果 $\phi_{k+1} > 0$，则扩展基矩阵 $Z_{k+1} = [Z_k, z_{k+1}]$，其中 $z_{k+1} = (g_{k+1} - Z_k u_k) / \phi_{k+1}$。此时，低维矩阵 $\bar{H}_{k+1}$ 可通过如下分块矩阵的 BFGS 更新得到：
+\begin{equation}
+    \bar{H}_{k+1} = \left(I - \tilde{\rho}_k \tilde{s}_k \tilde{y}_k^{\mathrm{T}}\right) \tilde{H}_k \left(I - \tilde{\rho}_k \tilde{y}_k \tilde{s}_k^{\mathrm{T}}\right) + \tilde{\rho}_k \tilde{s}_k \tilde{s}_k^{\mathrm{T}},
+\end{equation}
+其中 $\tilde{s}_k, \tilde{y}_k$ 分别是 $s_k, y_k$ 在扩展子空间上的投影，$\tilde{H}_k$ 是 $\bar{H}_k$ 的扩展矩阵。为了控制计算成本，通常采用周期性重启策略或限制子空间维数（类似于 L-BFGS 的显式截断）。
 \end{document}

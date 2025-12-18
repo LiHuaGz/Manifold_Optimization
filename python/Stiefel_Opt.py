@@ -173,6 +173,169 @@ class LBFGS(DirectionStrategy):
             self.s_history.append(s)
             self.y_history.append(y)
 
+class DampedLBFGS(LBFGS):
+    """
+    带阻尼的 L-BFGS 策略
+    参考 PDF 第 147 页 (5.2.96)-(5.2.97) 及 第 151 页 (5.2.102)
+    """
+    def __init__(self, m=10, delta=1.0):
+        super().__init__(m)
+        self.delta = delta  # B_k0 的缩放因子，对应 PDF 中的 B_{k,0} = delta * I
+
+    def update(self, s, y):
+        """
+        在更新历史之前，对 y 进行阻尼修正以保证正定性
+        """
+        # 计算 s^T y
+        sy = np.sum(s * y)
+        
+        # 计算 s^T B_{k,0} s
+        # 这里假设 B_{k,0} = delta * I，所以结果是 delta * (s^T s)
+        ss = np.sum(s * s)
+        sBs = self.delta * ss
+
+        # 如果 sBs 非常小（s 接近 0），直接跳过更新以防除零
+        if sBs < 1e-20:
+            return
+
+        # 计算 theta (PDF 公式 5.2.97)
+        # 条件: s^T y >= 0.25 * s^T B s
+        if sy >= 0.25 * sBs:
+            theta = 1.0
+        else:
+            theta = (0.75 * sBs) / (sBs - sy)
+
+        # 计算修正后的向量 r (PDF 公式 5.2.96 / 5.2.102)
+        # r = theta * y + (1 - theta) * B_{k,0} * s
+        r = theta * y + (1.0 - theta) * (self.delta * s)
+
+        # 将修正后的对 (s, r) 存入历史
+        # 此时必然满足 s^T r > 0，因此不需要像标准 LBFGS 那样做 sy > 1e-10 的判断
+        if len(self.s_history) >= self.m:
+            self.s_history.pop(0)
+            self.y_history.pop(0)
+        
+        self.s_history.append(s)
+        self.y_history.append(r)
+
+class SubspaceLBFGS(DirectionStrategy):
+    """
+    流形子空间 L-BFGS 方法 (Subspace L-BFGS)
+    参考 PDF 第 153-156 页 (Section 5.2.2)
+    核心思想：在由梯度张成的低维子空间 G_k 中维护拟牛顿矩阵 \bar{H}_k。
+    """
+    def __init__(self, max_dim=20, delta=1.0):
+        self.max_dim = max_dim     # 子空间最大维数，超过则重启
+        self.delta = delta         # 初始 Hessian 缩放
+        self.Z = None              # 正交基矩阵 (Flattened: np x dim)
+        self.H_sub = None          # 子空间内的逆 Hessian (dim x dim)
+        self.g_prev_flat = None    # 缓存上一步梯度用于基的扩展
+        self.dim = 0               # 当前子空间维度
+
+    def _reset(self, g_flat):
+        """重启子空间：以当前梯度为第一个基向量"""
+        # 归一化梯度作为第一个基
+        gnorm = np.linalg.norm(g_flat)
+        if gnorm < 1e-20:
+            gnorm = 1.0
+        
+        self.Z = (g_flat / gnorm).reshape(-1, 1)
+        self.dim = 1
+        
+        # 初始化子空间 Hessian 为单位阵 (或缩放单位阵)
+        self.H_sub = np.eye(1) * (1.0 / self.delta)
+
+    def compute_direction(self, grad_proj):
+        # 将 (n, p) 的梯度展平为向量，以便进行欧氏空间的子空间运算
+        # 流形上的内积 <A, B> = Tr(A.T B) 等价于展平后的点积
+        g_flat = grad_proj.reshape(-1)
+        
+        # 1. 初始化或重启判断
+        if self.Z is None:
+            self._reset(g_flat)
+        
+        # 保存当前梯度供 update 阶段使用 (用于构建 Z_{k+1})
+        self.g_prev_flat = g_flat.copy()
+
+        # 2. 投影梯度到子空间: \bar{g} = Z^T g (PDF Eq 5.2.110)
+        g_sub = self.Z.T @ g_flat
+
+        # 3. 在子空间计算方向: \bar{p} = -\bar{H} \bar{g}
+        # 这里 H_sub 近似的是 Hessian 的逆，所以直接乘
+        p_sub = -self.H_sub @ g_sub
+
+        # 4. 映射回全空间: p = Z \bar{p}
+        p_flat = self.Z @ p_sub
+        
+        # 恢复形状 (n, p)
+        direction = p_flat.reshape(grad_proj.shape)
+        
+        return direction
+
+    def update(self, s, y):
+        """
+        更新 Z 和 H_sub
+        依据 PDF Eq 5.2.112 (基更新) 和 Eq 5.2.116 (矩阵更新)
+        """
+        if self.Z is None or self.g_prev_flat is None:
+            return
+
+        # 展平 s 和 y
+        s_flat = s.reshape(-1)
+        y_flat = y.reshape(-1)
+
+        # ---------------------------------------------------------
+        # 1. 扩展子空间 Z (PDF Eq 5.2.112)
+        # ---------------------------------------------------------
+        # 新的基向量来自于当前的梯度 g_{k+1}
+        # 注意：y = g_{k+1} - g_k  =>  g_{k+1} = y + g_k
+        g_next_flat = y_flat + self.g_prev_flat
+
+        # 计算 g_{k+1} 在当前 Z 上的投影残差
+        # u = g_{k+1} - Z Z^T g_{k+1}
+        ZTg = self.Z.T @ g_next_flat
+        u = g_next_flat - self.Z @ ZTg
+        
+        u_norm = np.linalg.norm(u)
+
+        # 如果残差足够大，且未达到最大维数，则扩展子空间
+        if u_norm > 1e-6 and self.dim < self.max_dim:
+            # 添加新基向量 z_{new}
+            z_new = (u / u_norm).reshape(-1, 1)
+            self.Z = np.hstack([self.Z, z_new])
+            
+            # 扩展 H_sub
+            # PDF Eq 5.2.114 暗示新维度初始与其他维度解耦 (或是单位阵)
+            # 简单的策略：扩充 H_sub，对角线补 1/delta
+            new_dim = self.dim + 1
+            H_new = np.eye(new_dim) * (1.0 / self.delta)
+            H_new[:self.dim, :self.dim] = self.H_sub
+            self.H_sub = H_new
+            self.dim = new_dim
+        elif self.dim >= self.max_dim:
+            # 达到最大维数，标记需要在下一次 compute_direction 时重启
+            # 但为了保持当前迭代的连贯性，这里我们可以选择不扩展，
+            # 仅在当前子空间更新 H，或者直接重置 self.Z = None
+            # 这里采用“软重启”策略：本次只更新 H，下次 compute_direction 会检测并可能硬重启
+            # 为简单起见，我们直接置空，强制下次重启
+            self.Z = None
+            return
+
+        # ---------------------------------------------------------
+        # 2. 更新子空间矩阵 H_sub (PDF Eq 5.2.116)
+        # ---------------------------------------------------------
+        # 计算投影后的 s 和 y: \tilde{s} = Z^T s, \tilde{y} = Z^T y
+        s_sub = self.Z.T @ s_flat
+        y_sub = self.Z.T @ y_flat
+
+        # 检查曲率条件
+        sy_sub = np.dot(s_sub, y_sub)
+        if sy_sub > 1e-10:
+            # 标准 BFGS 更新公式 (作用在小矩阵 H_sub 上)
+            rho = 1.0 / sy_sub
+            I = np.eye(self.dim)
+            V = I - rho * np.outer(s_sub, y_sub)
+            self.H_sub = V @ self.H_sub @ V.T + rho * np.outer(s_sub, s_sub)
 
 # --- 策略模块: 步长选择 ---
 
@@ -327,11 +490,26 @@ def main():
     _, f_vals_lbfgs = solver.solve(x0, LBFGS(m=10), FixedStep(1.0), max_iters=2000)
     print(f"L-BFGS Time: {time.time() - start:.4f}s, min f: {min(f_vals_lbfgs):.6f}")
     
+    # --- 4. Damped L-BFGS (带阻尼) ---
+    start = time.time()
+    # 阻尼版：强制修正 y，使得所有步骤的数据都被利用
+    _, f_vals_damped = solver.solve(x0, DampedLBFGS(m=10, delta=20.0), FixedStep(1.0), max_iters=2000)
+    print(f"Damped L-BFGS Time: {time.time() - start:.4f}s, min f: {min(f_vals_damped):.6f}")
+
+    # --- 5. Subspace L-BFGS (New!) ---
+    # max_dim 控制子空间大小，相当于 L-BFGS 的 memory
+    start = time.time()
+    subspace_strategy = SubspaceLBFGS(max_dim=20, delta=1.0)
+    _, f_vals_subspace = solver.solve(x0, subspace_strategy, FixedStep(1.0), max_iters=2000)
+    print(f"Subspace L-BFGS Time: {time.time() - start:.4f}s, min f: {min(f_vals_subspace):.6f}")
+
     # 绘图比较
     plt.figure(figsize=(10, 6))
     plt.semilogy(f_vals_armijo, label='GD (Armijo)')
     plt.semilogy(f_vals_bb, label='GD (BB Step)')
     plt.semilogy(f_vals_lbfgs, label='L-BFGS')
+    plt.semilogy(f_vals_damped, label='Damped L-BFGS', linestyle='--', linewidth=1.5)
+    plt.semilogy(f_vals_subspace, label='Subspace L-BFGS', linestyle='-.', linewidth=1.5)
     plt.legend()
     plt.title('Optimization Convergence Comparison')
     plt.xlabel('Iteration')

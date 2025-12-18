@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.4.8)  17 DEC 2025 20:01
+This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.4.8)  18 DEC 2025 23:23
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -704,14 +704,20 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
-[8] (./main.aux)
+[8]
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[9] (./main.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2022/07/14>
  ***********
-
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
 
 
 Package rerunfilecheck Warning: File `main.out' has changed.
@@ -719,16 +725,16 @@ Package rerunfilecheck Warning: File `main.out' has changed.
 (rerunfilecheck)                or use package `bookmark'.
 
 Package rerunfilecheck Info: Checksums for `main.out':
-(rerunfilecheck)             Before: 81A9F1C6D7CF6F5A4CB2929CE2BFE82F;1575
-(rerunfilecheck)             After:  7C8B789EF83F2AC5A15606049847516A;2893.
+(rerunfilecheck)             Before: 7C8B789EF83F2AC5A15606049847516A;2893
+(rerunfilecheck)             After:  39CA0F05325ACBCD04D4DE61A1B2A659;3458.
  ) 
 Here is how much of TeX's memory you used:
- 16596 strings out of 475796
- 352390 string characters out of 5772564
- 772154 words of memory out of 5000000
- 39292 multiletter control sequences out of 15000+600000
+ 16613 strings out of 475796
+ 353215 string characters out of 5772564
+ 774652 words of memory out of 5000000
+ 39309 multiletter control sequences out of 15000+600000
  568355 words of font info for 102 fonts, out of 8000000 for 9000
  36 hyphenation exceptions out of 8191
  93i,12n,111p,537b,451s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on main.pdf (8 pages).
+Output written on main.pdf (9 pages).
