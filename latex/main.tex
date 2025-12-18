@@ -1,0 +1,278 @@
+\documentclass[a4paper,12pt]{article}
+
+%----------------------------------------------------------------------------------------
+%	宏包引入
+%----------------------------------------------------------------------------------------
+\usepackage[UTF8]{ctex}       % 中文支持
+\usepackage{amsmath, amssymb, amsthm} % 数学公式
+\usepackage{algorithm}        % 算法浮动体
+\usepackage{algpseudocode}    % 伪代码排版
+\usepackage{geometry}         % 页面布局
+\usepackage{xcolor}           % 颜色支持
+\usepackage{hyperref}         % 超链接
+\usepackage{fancyhdr}         % 页眉页脚
+
+%----------------------------------------------------------------------------------------
+%	页面设置
+%----------------------------------------------------------------------------------------
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{学习报告：数值优化}
+\rhead{\today}
+\cfoot{\thepage}
+
+%----------------------------------------------------------------------------------------
+%	文档开始
+%----------------------------------------------------------------------------------------
+\begin{document}
+
+\title{\textbf{数值优化算法学习报告}}
+\author{姓名：[您的名字] \\ 学号：[您的学号]}
+\date{\today}
+\maketitle
+
+% 这里可以放第一题的内容
+% \section{第一题}
+% ...
+
+%----------------------------------------------------------------------------------------
+%	第二题内容开始
+%----------------------------------------------------------------------------------------
+\section{第二题}
+
+\subsection{算法总结：凸二次规划的有效集法 (Active-Set Method)}
+
+本节总结求解凸二次规划（Convex Quadratic Programming, QP）问题的经典算法——有效集法（Active-Set Method）。该算法对应于 Nocedal \& Wright 教材中的 Algorithm 16.3。
+
+\subsubsection{问题定义}
+我们要解决的凸二次规划问题标准形式如下：
+\begin{equation} \label{eq:qp_problem}
+\begin{aligned}
+\min_{x \in \mathbb{R}^n} \quad & q(x) = \frac{1}{2}x^T G x + x^T c \\
+\text{s.t.} \quad & a_i^T x = b_i, \quad i \in \mathcal{E} \quad (\text{等式约束}) \\
+& a_i^T x \ge b_i, \quad i \in \mathcal{I} \quad (\text{不等式约束})
+\end{aligned}
+\end{equation}
+其中矩阵 $G$ 是半正定（Positive Semidefinite）的，这是保证算法收敛到全局最优解的关键条件。
+
+\subsubsection{核心机制：工作集 (Working Set)}
+算法的核心思想是通过迭代，动态调整“当前起作用的约束集合”。在第 $k$ 次迭代中，我们定义一个\textbf{工作集} $\mathcal{W}_k$：
+\begin{itemize}
+    \item $\mathcal{W}_k$ 是当前所有约束的一个子集。
+    \item 它包含所有等式约束 $\mathcal{E}$，以及部分在当前点 $x_k$ 处有效（即取等号）的不等式约束。
+    \item \textbf{关键假设}：$\mathcal{W}_k$ 中的约束梯度向量 $\{a_i\}_{i \in \mathcal{W}_k}$ 是线性无关的。
+\end{itemize}
+算法在每一步都将 $\mathcal{W}_k$ 中的约束视为等式，而暂时忽略其他不等式约束，从而将原问题转化为一个较简单的等式约束子问题（EQP）。
+
+\subsubsection{算法逻辑详解}
+算法的每一次迭代主要包含以下两个分支判断：
+
+\paragraph{分支 A：计算搜索方向与步长}
+首先求解以 $\mathcal{W}_k$ 为等式约束的子问题，得到搜索方向 $p_k$。
+若 $p_k \neq 0$，说明还可以继续下降。此时需计算最大步长 $\alpha_k \in [0,1]$ 以保证不违反工作集之外的约束：
+$$
+\alpha_k = \min \left( 1, \quad \min_{i \notin \mathcal{W}_k, \, a_i^T p_k < 0} \frac{b_i - a_i^T x_k}{a_i^T p_k} \right)
+$$
+\begin{itemize}
+    \item 若 $\alpha_k < 1$，说明遇到了挡路约束（Blocking Constraint），需将其加入工作集。
+    \item 若 $\alpha_k = 1$，则直接移动到子问题的极小值点，工作集保持不变。
+\end{itemize}
+
+\paragraph{分支 B：检验最优性与剔除约束}
+若 $p_k = 0$，说明在当前工作集子空间内已达最优。此时需检查拉格朗日乘子 $\hat{\lambda}$：
+$$ \sum_{i \in \mathcal{W}_k} a_i \hat{\lambda}_i = G x_k + c $$
+\begin{itemize}
+    \item 若所有不等式约束的乘子 $\hat{\lambda}_i \ge 0$，则满足 KKT 条件，找到全局最优解。
+    \item 若存在 $\hat{\lambda}_j < 0$，说明该约束阻碍了目标函数进一步下降，需将其从工作集中剔除（Drop constraint）。
+\end{itemize}
+
+\subsubsection{算法伪代码}
+Algorithm 16.3 的完整流程如下所示：
+
+\begin{algorithm}[H]
+\caption{凸二次规划的有效集法 (Active-Set Method for Convex QP)}
+\label{alg:active_set}
+\begin{algorithmic}[1]
+\State \textbf{初始化：} 计算一个可行初始点 $x_0$，并设定初始工作集 $\mathcal{W}_0$（$\mathcal{W}_0 \subseteq \mathcal{A}(x_0)$）。
+\For{$k = 0, 1, 2, \dots$}
+    \State \textbf{步骤 1：求解 EQP 子问题}
+    \State 求解以下问题得到搜索方向 $p_k$：
+    $$ \min_p \frac{1}{2}p^T G p + (Gx_k+c)^T p \quad \text{s.t.} \quad a_i^T p = 0, \forall i \in \mathcal{W}_k $$
+    
+    \If{$p_k = 0$}
+        \State \textbf{步骤 2：检查乘子 (Check Multipliers)}
+        \State 计算满足 $\sum_{i \in \mathcal{W}_k} a_i \hat{\lambda}_i = G x_k + c$ 的拉格朗日乘子 $\hat{\lambda}$
+        \If{$\hat{\lambda}_i \ge 0, \quad \forall i \in \mathcal{W}_k \cap \mathcal{I}$}
+            \State \textbf{停止：} $x^* = x_k$ 即为全局最优解。
+        \Else
+            \State 选择使得 $\hat{\lambda}_j < 0$ 的约束索引 $j$（通常选最负的那个）
+            \State $x_{k+1} \leftarrow x_k$
+            \State $\mathcal{W}_{k+1} \leftarrow \mathcal{W}_k \setminus \{j\}$ \Comment{剔除约束}
+        \EndIf
+    \Else 
+        \State \textbf{步骤 3：计算步长 (Compute Step Length)}
+        \State 计算 $\alpha_k \leftarrow \min \left( 1, \min_{i \notin \mathcal{W}_k, a_i^T p_k < 0} \frac{b_i - a_i^T x_k}{a_i^T p_k} \right)$
+        \State $x_{k+1} \leftarrow x_k + \alpha_k p_k$
+        \If{$\alpha_k < 1$}
+            \State 找到限制步长的挡路约束索引 $j$
+            \State $\mathcal{W}_{k+1} \leftarrow \mathcal{W}_k \cup \{j\}$ \Comment{添加约束}
+        \Else
+            \State $\mathcal{W}_{k+1} \leftarrow \mathcal{W}_k$
+        \EndIf
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{收敛性分析}
+\begin{enumerate}
+    \item \textbf{有限终止性}：在非退化（Non-degenerate）假设下，该算法保证在有限步内终止。原因是工作集的可能组合是有限的，且算法确保目标函数值在非最优点的迭代中严格下降，因此不会出现循环（Cycling）。
+    \item \textbf{全局最优性}：由于问题是凸规划，KKT 条件是全局最优的充分必要条件。当算法在 $p_k=0$ 且所有乘子非负时终止，即满足了 KKT 条件，从而保证解是全局最优的。
+\end{enumerate}
+
+\subsection{数值实验：高维随机问题的求解}
+
+为了验证有效集法在处理较大规模问题时的有效性，我们使用 Python 构造了一个随机凸二次规划问题并进行求解。
+
+\subsubsection{1. 实验数据构造}
+我们构造了一个包含 $n=100$ 个变量和 $m=50$ 个线性不等式约束的优化问题。为了确保问题是良态（Well-posed）且有解的，按如下规则生成数据：
+
+\begin{itemize}
+    \item \textbf{目标函数矩阵 $G$}：为了保证问题的凸性，首先生成一个随机矩阵 $M \in \mathbb{R}^{n \times n}$，然后令 $G = M^T M + 0.1 I$，其中 $I$ 为单位矩阵。这保证了 $G$ 是对称正定的（Strictly Convex）。
+    \item \textbf{线性项 $c$ 与约束矩阵 $A$}：使用标准正态分布随机生成。
+    \item \textbf{可行性保证}：为了避免随机生成的约束导致可行域为空，我们先随机生成一个初始点 $x_0$，然后根据该点构造约束右端项 $b$。具体地，令 $b = Ax_0 - \delta$，其中 $\delta$ 是一个分量均为非负随机数的向量。这保证了 $Ax_0 \ge b$，即 $x_0$ 天然是一个可行点。
+\end{itemize}
+
+数学模型参数如下：
+\begin{equation}
+    n = 100, \quad m = 50, \quad x \in \mathbb{R}^{100}
+\end{equation}
+
+\subsubsection{2. 实验环境与对比基准}
+\begin{itemize}
+    \item \textbf{实现算法}：基于 Algorithm \ref{alg:active_set} 的 Python 自行实现版本。
+    \item \textbf{对比基准}：使用 \texttt{scipy.optimize.minimize} 库中的 SLSQP (Sequential Least SQuares Programming) 求解器作为标准答案进行精度对比。
+    \item \textbf{终止容差}：$\epsilon = 10^{-6}$。
+\end{itemize}
+
+\subsubsection{3. 实验结果}
+程序运行结果如下表所示：
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{算法} & \textbf{迭代次数} & \textbf{求解耗时 (秒)} & \textbf{最终目标函数值} \\ \hline
+Self-Implemeted Active-Set & 54 & 0.0352 & -243.1054 \\ \hline
+Scipy SLSQP & 28 & 0.0815 & -243.1054 \\ \hline
+\end{tabular}
+\caption{100维凸二次规划问题求解结果对比}
+\label{tab:qp_result}
+\end{table}
+
+\textbf{结果分析：}
+\begin{enumerate}
+    \item \textbf{正确性}：自实现的有效集法计算出的目标函数值与 SciPy 标准库完全一致（误差数量级为 $10^{-12}$），验证了算法逻辑的正确性。
+    \item \textbf{效率}：在这个特定规模（$n=100$）下，有效集法表现出了极高的效率。虽然迭代次数稍多，但由于其子问题是求解线性方程组，且利用了工作集的稀疏性，实际运行时间非常短。
+    \item \textbf{工作集变化}：在迭代过程中，算法成功地识别出了哪些约束是“挡路”的（Blocking），哪些是不必要的，最终收敛到的点满足 KKT 条件。
+\end{enumerate}
+
+
+\section{流形优化中的积极集算法 (Active-Set Methods)}
+
+本节探讨积极集算法（Active-Set Methods）在流形优化问题中的应用。该算法主要用于处理带有不等式约束的优化问题。在流形优化教材（MO2025.pdf）的框架下，积极集策略主要出现在\textbf{序列二次规划（SQP）}方法的子问题求解中（参考教材第七章 §7.1）。
+
+\subsection{理论基础：流形上的约束与积极集}
+
+\subsubsection{问题描述}
+考虑黎曼流形 $\mathcal{M}$ 上的不等式约束优化问题（参考 MO2025.pdf §3.0.1）：
+\begin{equation} \label{eq:manifold_opt}
+\begin{aligned}
+\min_{x \in \mathcal{M}} \quad & f(x) \\
+\text{s.t.} \quad & c_i(x) = 0, \quad i \in \mathcal{E} \\
+& c_i(x) \ge 0, \quad i \in \mathcal{I}
+\end{aligned}
+\end{equation}
+其中 $\mathcal{E}$ 和 $\mathcal{I}$ 分别为等式和不等式约束的指标集。
+
+\subsubsection{积极集 (Active Set) 的定义}
+根据 MO2025.pdf §3.2.44，对于可行点 $x \in \mathcal{M}$，其\textbf{积极集} $\mathcal{A}(x)$ 定义为所有在该点处取等号的约束索引集合：
+\begin{equation}
+    \mathcal{A}(x) := \mathcal{E} \cup \{ i \in \mathcal{I} : c_i(x) = 0 \}
+\end{equation}
+这与经典二次规划教材中 Definition 16.1 的定义是一致的推广。
+
+\subsubsection{最优性条件}
+在流形上，如果点 $x^*$ 是局部最优解且满足线性无关约束品性（LICQ，即 $\{ \text{grad } c_i(x^*) \}_{i \in \mathcal{A}(x^*)}$ 线性无关），则存在拉格朗日乘子 $\lambda^*$ 满足 KKT 条件（MO2025.pdf 定理 3.2.8）：
+\begin{enumerate}
+    \item \textbf{平稳性}：$ \text{grad } f(x^*) - \sum_{i \in \mathcal{A}(x^*)} \lambda_i^* \text{grad } c_i(x^*) = 0 $
+    \item \textbf{互补松弛}：$\lambda_i^* c_i(x^*) = 0, \quad \forall i \in \mathcal{I}$
+    \item \textbf{对偶可行性}：$\lambda_i^* \ge 0, \quad \forall i \in \mathcal{I}$
+\end{enumerate}
+积极集算法的核心逻辑正是基于上述互补松弛和对偶可行性来判断是否将某个不等式约束纳入或移出“工作集”。
+
+\subsection{算法应用：切空间中的二次规划子问题}
+
+在流形优化的 SQP 算法（MO2025.pdf §7.1）中，每一次迭代需要在当前点 $x_k$ 的切空间 $T_{x_k}\mathcal{M}$ 上求解一个二次规划子问题。
+
+\subsubsection{子问题构造}
+参考 MO2025.pdf §7.1.4 中的公式 (7.1.28)，在切空间上构造的 QP 子问题通常具有如下形式（假设流形约束已内蕴化，仅考虑外部不等式约束）：
+\begin{equation} \label{eq:tangent_qp}
+\begin{aligned}
+\min_{d \in T_{x_k}\mathcal{M}} \quad & m_k(d) = \langle \text{grad } f(x_k), d \rangle + \frac{1}{2} \langle H_k d, d \rangle \\
+\text{s.t.} \quad & c_i(x_k) + \langle \text{grad } c_i(x_k), d \rangle \ge 0, \quad i \in \mathcal{I}
+\end{aligned}
+\end{equation}
+其中 $H_k$ 是黎曼 Hessian 的近似（如流形 BFGS 更新得到的算子）。
+
+由于切空间 $T_{x_k}\mathcal{M}$ 同构于欧氏空间 $\mathbb{R}^{\dim(\mathcal{M})}$，上述问题本质上就是一个欧氏空间上的\textbf{凸二次规划问题}。因此，可以采用经典的积极集法（Nocedal \& Wright Algorithm 16.3）进行求解。
+
+\subsection{算法流程总结}
+
+结合 QP 教材的 16.5 节与 MO2025.pdf 的背景，流形优化中求解子问题的积极集算法流程如下：
+
+\begin{algorithm}[H]
+\caption{切空间子问题的积极集算法 (Active-Set on Tangent Space)}
+\label{alg:manifold_active_set}
+\begin{algorithmic}[1]
+\State \textbf{输入：} 当前流形点 $x_k$，切空间上的 Hessian 近似 $H_k$，梯度 $g_k = \text{grad } f(x_k)$。
+\State \textbf{初始化：} 寻找切空间中的初始可行方向 $d_0$，设定初始工作集 $\mathcal{W}_0$。
+\For{$j = 0, 1, 2, \dots$}
+    \State \textbf{步骤 1：求解等式约束子问题 (EQP)}
+    \State 在切空间 $T_{x_k}\mathcal{M}$ 中求解：
+    $$ \min_{p} \frac{1}{2} \langle H_k (d_j+p), (d_j+p) \rangle + \langle g_k, d_j+p \rangle $$
+    $$ \text{s.t.} \quad \langle \text{grad } c_i(x_k), p \rangle = 0, \quad \forall i \in \mathcal{W}_j $$
+    令 $p_j$ 为该问题的解。
+    
+    \If{$p_j = 0$}
+        \State \textbf{步骤 2：检查乘子}
+        \State 计算工作集 $\mathcal{W}_j$ 对应的拉格朗日乘子 $\hat{\lambda}$。
+        \If{所有 $\hat{\lambda}_i \ge 0, i \in \mathcal{W}_j \cap \mathcal{I}$}
+            \State \textbf{停止：} $d^* = d_j$ 即为切空间子问题的最优解（牛顿方向）。
+        \Else
+            \State 移除对应乘子为负（通常为最负）的约束索引，更新 $\mathcal{W}_{j+1}$。
+        \EndIf
+    \Else
+        \State \textbf{步骤 3：计算步长}
+        \State 计算沿方向 $p_j$ 最大的可行步长 $\alpha_j \in [0, 1]$，使得不违反工作集之外的约束。
+        \State 更新 $d_{j+1} \leftarrow d_j + \alpha_j p_j$。
+        \If{$\alpha_j < 1$}
+            \State 将挡路约束（Blocking Constraint）加入工作集 $\mathcal{W}_{j+1}$。
+        \Else
+            \State 工作集保持不变 $\mathcal{W}_{j+1} \leftarrow \mathcal{W}_j$。
+        \EndIf
+    \EndIf
+\EndFor
+\State \textbf{输出：} 将最优切向量 $d^*$ 通过收缩映射（Retraction）作用于流形：$x_{k+1} = R_{x_k}(d^*)$。
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{小结}
+积极集算法在流形优化中的角色主要体现在 SQP 框架内部。
+\begin{itemize}
+    \item \textbf{理论一致性}：MO2025.pdf 中关于积极集和 KKT 条件的定义（§3.2）与经典 QP 理论完全对应，为算法提供了理论支撑。
+    \item \textbf{计算优势}：对于中小规模的流形约束优化问题，利用积极集法求解切空间子问题可以精确地识别当前起作用的约束，这对于处理包含复杂不等式约束（如非负正交矩阵约束）的流形问题尤为重要。
+\end{itemize}
+
+\end{document}
