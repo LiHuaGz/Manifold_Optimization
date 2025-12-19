@@ -1,5 +1,6 @@
 import os
 import time
+from collections import deque
 
 # --- 1. 关键优化: 在导入 numpy 之前配置线程环境 ---
 # 许多后端(MKL, OpenBLAS)只在加载时读取这些变量
@@ -26,8 +27,8 @@ class StiefelManifold:
     @staticmethod
     def retraction(X, Z, method='svd'):
         """将切空间向量 Z 映射回流形"""
-        # 默认 SVD (保持二阶精度)
-        # 优化: 尽量避免 full_matrices=True (虽然原代码已设为False)
+        # 保持 SVD 以保证二阶收敛性
+        # full_matrices=False 对瘦长矩阵非常关键
         U, _, Vt = np.linalg.svd(X + Z, full_matrices=False)
         return U @ Vt
 
@@ -37,8 +38,8 @@ class StiefelManifold:
         将欧氏梯度 G 投影到 X 处的切空间
         Proj(G) = G - X @ sym((X.T @ G))
         """
+        # 这一步计算是 O(N*P^2)，相对于 Cost 计算很快
         XTG = X.T @ G
-        # 优化: 乘法通常比除法微快
         sym = (XTG + XTG.T) * 0.5
         return G - X @ sym
 
@@ -55,18 +56,25 @@ class QuadraticProblem:
 
     def compute_cost_and_cache(self, X):
         """计算 f(X) 并返回中间变量 AX 以供梯度计算使用"""
+        # 瓶颈操作: O(N^2 * P)
         AX = self.A @ X
-        # 优化: 使用 einsum 避免生成 (N, P) 的临时矩阵 X*AX
-        # Tr(X.T @ AX) == sum(X * AX)
-        term1 = np.einsum('ij,ij->', X, AX)
-        term2 = 2.0 * np.einsum('ij,ij->', self.B, X)
+        
+        # 优化 1: 使用 vdot 替代 einsum/sum+multiply
+        # np.vdot 会将数组视为扁平向量计算内积，利用 BLAS 极快
+        # Cost = Tr(X.T @ AX) + 2 Tr(B.T @ X)
+        term1 = np.vdot(X, AX)
+        term2 = 2.0 * np.vdot(self.B, X)
+        
         return term1 + term2, AX
 
     def compute_euclidean_grad(self, X, AX):
         """利用缓存的 AX 计算欧氏梯度"""
         # G = 2 * (AX + B)
-        # 返回新对象，避免修改缓存的 AX
-        return 2.0 * (AX + self.B)
+        # 优化 2: 减少临时内存分配
+        # 显式创建 G，然后就地乘法
+        G = AX + self.B
+        G *= 2.0
+        return G
 
 
 class LineSearch:
@@ -82,7 +90,6 @@ class LineSearch:
         self.max_ls_iters = max_ls_iters
 
     def search(self, X, f_val, AX, grad_proj, search_dir, initial_step, grad_norm_sq):
-        # 记录历史最大值
         self.history.append(f_val)
         if len(self.history) > self.num_history:
             self.history.pop(0)
@@ -90,21 +97,20 @@ class LineSearch:
 
         t = initial_step
         
-        # 优化: 预先计算方向导数项的一部分
-        # Descent term = c * t * <grad, dir>
-        # 对于 GD, <grad, -grad> = -norm^sq
-        # 使用 vdot 替代 sum(product) 加速
+        # 预先计算方向导数项: c * <grad, dir>
+        # 这里的 dot product 也是 O(NP)
         grad_dot_dir = np.vdot(grad_proj, search_dir)
+        descent_factor = self.c * grad_dot_dir
         
         for _ in range(self.max_ls_iters):
             try:
-                # 尝试更新点
+                # 尝试更新点 (SVD 开销)
                 X_new = StiefelManifold.retraction(X, t * search_dir)
+                
+                # 计算新 Cost (矩阵乘法开销)
                 f_new, AX_new = self.problem.compute_cost_and_cache(X_new)
                 
-                descent_term = self.c * t * grad_dot_dir
-                
-                if f_new <= f_ref + descent_term:
+                if f_new <= f_ref + t * descent_factor:
                     return X_new, f_new, AX_new, t, True
                 
             except np.linalg.LinAlgError:
@@ -113,7 +119,6 @@ class LineSearch:
             t *= self.rho
 
         return X, f_val, AX, 0.0, False
-
 
 # --- 策略模块: 搜索方向 ---
 
@@ -131,39 +136,41 @@ class SteepestDescent(DirectionStrategy):
 class LBFGS(DirectionStrategy):
     def __init__(self, m=10):
         self.m = m
-        self.s_history = []
-        self.y_history = []
+        # 优化 3: 使用 deque 高效管理队列，并存储 (s, y, rho) 元组
+        # 避免每次迭代重新计算 rho
+        self.memory = deque(maxlen=m)
 
     def compute_direction(self, grad_proj):
-        if not self.s_history:
+        if not self.memory:
             return -grad_proj
 
         q = grad_proj.copy()
-        alphas = []
+        alphas = [0.0] * len(self.memory)
         
         # Backward pass
-        for s, y in zip(reversed(self.s_history), reversed(self.y_history)):
-            # 优化: vdot 替代 sum(s*y)
-            sy = np.vdot(y, s)
-            rho = 1.0 / sy if abs(sy) > 1e-20 else 1.0
-            
+        # memory 是从旧到新存储，reversed 遍历即从新到旧
+        for i, (s, y, rho) in enumerate(reversed(self.memory)):
+            # 优化 4: 使用 vdot
             sq = np.vdot(s, q)
             alpha = rho * sq
-            alphas.append(alpha)
+            alphas[i] = alpha
             q -= alpha * y
             
         # Scaling
-        s_last, y_last = self.s_history[-1], self.y_history[-1]
-        sy_last = np.vdot(s_last, y_last)
+        # 使用最新的一对数据进行初始 Hessian 缩放
+        s_last, y_last, rho_last = self.memory[-1]
+        # rho = 1/sy, so sy = 1/rho
+        sy_last = 1.0 / rho_last if abs(rho_last) > 1e-20 else 1.0
         yy_last = np.vdot(y_last, y_last)
         gamma = sy_last / yy_last if yy_last > 1e-20 else 1.0
-        r = gamma * q
+        
+        r = q # Alias
+        r *= gamma # In-place scaling
         
         # Forward pass
-        for s, y, alpha in zip(self.s_history, self.y_history, reversed(alphas)):
-            sy = np.vdot(y, s)
-            rho = 1.0 / sy if abs(sy) > 1e-20 else 1.0
-            
+        # alphas 列表也是按 reversed 顺序填充的 (最新在 0)，所以正常遍历 memory (旧->新) 
+        # 对应的 alpha 需要反向取出
+        for (s, y, rho), alpha in zip(self.memory, reversed(alphas)):
             yr = np.vdot(y, r)
             beta = rho * yr
             r += s * (alpha - beta)
@@ -171,21 +178,20 @@ class LBFGS(DirectionStrategy):
         return -r
 
     def update(self, s, y):
-        # 优化: vdot
-        if np.vdot(s, y) > 1e-10:
-            if len(self.s_history) >= self.m:
-                self.s_history.pop(0)
-                self.y_history.pop(0)
-            self.s_history.append(s)
-            self.y_history.append(y)
+        # 优化: 仅在此处计算一次 inner product
+        sy = np.vdot(s, y)
+        if sy > 1e-10:
+            rho = 1.0 / sy
+            # deque 会自动处理溢出
+            self.memory.append((s, y, rho))
 
 class DampedLBFGS(LBFGS):
     def __init__(self, m=10, delta=1.0):
+        # 初始化父类，利用其 memory 结构
         super().__init__(m)
         self.delta = delta 
 
     def update(self, s, y):
-        # 优化: vdot 计算内积
         sy = np.vdot(s, y)
         ss = np.vdot(s, s)
         sBs = self.delta * ss
@@ -198,130 +204,85 @@ class DampedLBFGS(LBFGS):
         else:
             theta = (0.75 * sBs) / (sBs - sy)
 
+        # 这里的 r 就是 damped y
         r = theta * y + (1.0 - theta) * (self.delta * s)
-
-        # 存入历史
-        if len(self.s_history) >= self.m:
-            self.s_history.pop(0)
-            self.y_history.pop(0)
         
-        self.s_history.append(s)
-        self.y_history.append(r)
+        # 重新计算 r 和 s 的内积作为新的 denominator
+        sr = np.vdot(s, r)
+        
+        if sr > 1e-10:
+            rho = 1.0 / sr
+            self.memory.append((s, r, rho))
 
 class SubspaceLBFGS(DirectionStrategy):
     """
-    Subspace L-BFGS 优化版
+    Subspace L-BFGS (保持逻辑优化)
     """
     def __init__(self, max_dim=20, delta=1.0):
         self.max_dim = max_dim
         self.delta = delta
-        
-        # 优化: 预分配内存，避免反复 hstack
-        self.Z_buffer = None  # 将在 _reset 时分配
+        self.Z_buffer = None 
         self.dim = 0
-        
         self.H_sub = None
         self.g_prev_flat = None
 
     def _reset(self, g_flat):
-        # 归一化
         gnorm = np.linalg.norm(g_flat)
-        if gnorm < 1e-20:
-            gnorm = 1.0
+        if gnorm < 1e-20: gnorm = 1.0
         
-        # 预分配 Buffer: (n*p, max_dim)
         if self.Z_buffer is None or self.Z_buffer.shape[0] != g_flat.size:
             self.Z_buffer = np.zeros((g_flat.size, self.max_dim), dtype=g_flat.dtype)
         
-        # 设置第一列
         self.Z_buffer[:, 0] = g_flat / gnorm
         self.dim = 1
-        
-        # 初始化子空间 Hessian
         self.H_sub = np.eye(1) * (1.0 / self.delta)
 
     def compute_direction(self, grad_proj):
         g_flat = grad_proj.reshape(-1)
-        
-        if self.dim == 0:
-            self._reset(g_flat)
-        
+        if self.dim == 0: self._reset(g_flat)
         self.g_prev_flat = g_flat.copy()
 
-        # 取出当前有效的 Z (View)
         Z_active = self.Z_buffer[:, :self.dim]
-
-        # 2. 投影梯度: g_sub = Z^T g
+        # vdot 优化: Matrix-Vector 乘法内部已优化，此处显式转置
         g_sub = Z_active.T @ g_flat
-
-        # 3. 子空间方向
         p_sub = -self.H_sub @ g_sub
-
-        # 4. 映射回全空间
         p_flat = Z_active @ p_sub
         
         return p_flat.reshape(grad_proj.shape)
 
     def update(self, s, y):
-        if self.dim == 0 or self.g_prev_flat is None:
-            return
+        if self.dim == 0 or self.g_prev_flat is None: return
 
         s_flat = s.reshape(-1)
         y_flat = y.reshape(-1)
         
-        # 扩展子空间
         g_next_flat = y_flat + self.g_prev_flat
         Z_active = self.Z_buffer[:, :self.dim]
         
-        # 计算正交残差
-        # u = g - Z (Z^T g)
         ZTg = Z_active.T @ g_next_flat
         u = g_next_flat - Z_active @ ZTg
-        
         u_norm = np.linalg.norm(u)
 
         if u_norm > 1e-6 and self.dim < self.max_dim:
-            # 添加新基到 Buffer
             self.Z_buffer[:, self.dim] = u / u_norm
-            
-            # 扩展 H_sub
             new_dim = self.dim + 1
             H_new = np.eye(new_dim) * (1.0 / self.delta)
             H_new[:self.dim, :self.dim] = self.H_sub
             self.H_sub = H_new
             self.dim = new_dim
         elif self.dim >= self.max_dim:
-            # 软重启：标记下一次 compute_direction 时重置
             self.dim = 0
             return
 
-        # 更新子空间矩阵 H_sub
-        # 获取更新后的 Z_active
         Z_active = self.Z_buffer[:, :self.dim]
-        
         s_sub = Z_active.T @ s_flat
         y_sub = Z_active.T @ y_flat
 
         sy_sub = np.dot(s_sub, y_sub)
         if sy_sub > 1e-10:
             rho = 1.0 / sy_sub
-            # 利用 outer product 更新，避免生成大矩阵
-            # V = I - rho * s y^T
-            # H_new = V H V^T + rho s s^T
-            
-            # 展开计算比显式构造 V 更快 (BFGS 公式):
-            # H = (I - rho s y^T) H (I - rho y s^T) + rho s s^T
-            #   = H - rho s (y^T H) - rho (H y) s^T + rho^2 (y^T H y) s s^T + rho s s^T
-            
-            Hy = self.H_sub @ y_sub
-            yHy = np.dot(y_sub, Hy)
-            term2 = (rho * rho * yHy + rho) * np.outer(s_sub, s_sub)
-            
-            # H_sub -= rho * (np.outer(s_sub, Hy) + np.outer(Hy, s_sub))
-            # H_sub += term2
-            
-            # 原始代码的写法也很清晰，对于小维度 (20x20) 差别不大，保持原逻辑但优化内存
             I = np.eye(self.dim)
+            # 子空间维度很小 (20x20)，这里的 outer 和 matmul 开销忽略不计
             V = I - rho * np.outer(s_sub, y_sub)
             self.H_sub = V @ self.H_sub @ V.T + rho * np.outer(s_sub, s_sub)
 
@@ -347,8 +308,9 @@ class BBStep(StepSizeStrategy):
         if iter_idx == 0 or s is None or y is None:
             return 1.0
         
+        # 优化: 使用 vdot
         ss = np.vdot(s, s)
-        sy = abs(np.vdot(s, y))
+        sy = abs(np.vdot(s, y)) # 取绝对值保证正定性猜测
         yy = np.vdot(y, y)
         
         if iter_idx % 2 == 0:
@@ -382,10 +344,9 @@ class StiefelSolver:
         strategy_name = direction_strategy.__class__.__name__
         print(f"Start Opt: Dir={strategy_name}, Step={step_strategy.__class__.__name__}")
 
-        # 缓存 grad_norm 避免重复计算平方根
         grad = self.problem.compute_euclidean_grad(X, AX)
         grad_proj = StiefelManifold.project_gradient(X, grad)
-        grad_norm_sq = np.vdot(grad_proj, grad_proj) # Fast norm squared
+        grad_norm_sq = np.vdot(grad_proj, grad_proj)
         
         for i in range(max_iters):
             grad_norm = np.sqrt(grad_norm_sq)
@@ -394,6 +355,7 @@ class StiefelSolver:
                 initial_grad_norm = grad_norm
                 print(f"  Init Grad Norm: {initial_grad_norm:.2e}")
             
+            # 收敛判定
             if grad_norm < tol or grad_norm < tol * initial_grad_norm:
                 print(f"  Converged at iter {i}, grad_norm: {grad_norm:.2e}")
                 break
@@ -412,12 +374,10 @@ class StiefelSolver:
             )
 
             if not success:
-                # 重启机制
-                if isinstance(direction_strategy, LBFGS) and len(direction_strategy.s_history) > 0:
+                # 策略重启
+                if isinstance(direction_strategy, LBFGS) and len(direction_strategy.memory) > 0:
                     print(f"  Line search stuck at iter {i}. Restarting L-BFGS...")
-                    direction_strategy.s_history.clear()
-                    direction_strategy.y_history.clear()
-                    # 尝试梯度方向
+                    direction_strategy.memory.clear()
                     direction = -grad_proj
                     X_new, f_new, AX_new, t_actual, success = ls.search(
                         X, f_val, AX, grad_proj, direction, 1.0, grad_norm_sq
@@ -435,7 +395,6 @@ class StiefelSolver:
             AX = AX_new
             current_step = t_actual
             
-            # 为下一次迭代准备梯度
             grad = self.problem.compute_euclidean_grad(X, AX)
             grad_proj = StiefelManifold.project_gradient(X, grad)
             grad_norm_sq = np.vdot(grad_proj, grad_proj)
@@ -443,12 +402,12 @@ class StiefelSolver:
             f_vals.append(f_val)
             
             if i % 100 == 0:
-                print(f"  Iter {i}: f={f_val:.4e}, |g|={np.sqrt(grad_norm_sq):.2e}")
+                print(f"  Iter {i}: f={f_val:.4e}, |g|={grad_norm:.2e}")
 
         return X, f_vals
 
 def main():
-    n, p = 1000, 50
+    n, p = 500, 5
     print(f"Matrix Size: {n}x{n}, Stiefel Manifold St({n}, {p})")
     
     # 构造数据
@@ -465,8 +424,8 @@ def main():
     
     # 运行配置
     strategies = [
-        #(SteepestDescent(), FixedStep(1.0), "Armijo"),
-        #(SteepestDescent(), BBStep(), "BB Step"),
+        (SteepestDescent(), FixedStep(1.0), "Armijo"),
+        (SteepestDescent(), BBStep(), "BB Step"),
         (LBFGS(m=10), FixedStep(1.0), "L-BFGS"),
         (DampedLBFGS(m=10, delta=20.0), FixedStep(1.0), "Damped L-BFGS"),
         (SubspaceLBFGS(max_dim=20, delta=1.0), FixedStep(1.0), "Subspace L-BFGS")
