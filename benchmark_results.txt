@@ -1,0 +1,17 @@
+
+\begin{table}[h]
+    \centering
+    \caption{Optimization Algorithm Benchmarks}
+    \begin{tabular}{|l|c|c|c|c|}
+        \hline
+        \textbf{Method} & \textbf{Step Strategy} & \textbf{Time (s)} & \textbf{Min Cost} & \textbf{Iterations} \\
+        \hline
+        GD & Armijo & 11.3129 & 1.9529e+01 & 2000 \\
+        GD & BB Step & 0.9859 & 7.6588e+00 & 2000 \\
+        L-BFGS & Armijo & 1.2784 & 5.9507e-02 & 2000 \\
+        Damped L-BFGS & Armijo & 1.3997 & 6.0286e-02 & 2000 \\
+        Subspace L-BFGS & Armijo & 6.5781 & 2.1489e-02 & 2000 \\
+        \hline
+    \end{tabular}
+    \label{tab:benchmark}
+\end{table}
