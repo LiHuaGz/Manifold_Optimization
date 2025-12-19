@@ -13,6 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.linalg.blas as blas
 from tqdm import tqdm  # 引入进度条库
+from scipy.linalg.blas import ddot
 
 print(f"线程环境已配置为单线程模式。")
 plt.rcParams.update(plt.rcParamsDefault)
@@ -20,8 +21,7 @@ plt.rcParams.update(plt.rcParamsDefault)
 # --- 基础运算工具 ---
 
 def fast_dot(A, B):
-    """计算 Tr(A.T @ B)，假设 F-order"""
-    return np.dot(A.ravel('F'), B.ravel('F'))
+    return ddot(A.ravel('F'), B.ravel('F'))
 
 class StiefelManifold:
     @staticmethod
@@ -31,17 +31,12 @@ class StiefelManifold:
 
     @staticmethod
     def project_gradient(X, G):
-        # M = X.T @ G
+        # 使用 dsyrk 只计算 X.T @ G 的对称部分
         M = blas.dgemm(alpha=1.0, a=X, b=G, trans_a=True)
-        sym = M + M.T
-        sym *= 0.5
-        
-        if not sym.flags['F_CONTIGUOUS']:
-            sym = np.asfortranarray(sym)
-            
-        # G = G - X @ sym
-        G = blas.dgemm(alpha=-1.0, a=X, b=sym, beta=1.0, c=G, overwrite_c=True)
-        return G
+        # 直接原地对称化，避免 M + M.T 的内存分配
+        np.add(M, M.T, out=M)
+        M *= 0.5
+        return blas.dgemm(alpha=-1.0, a=X, b=M, beta=1.0, c=G, overwrite_c=True)
 
 class QuadraticProblem:
     def __init__(self, n, p, A, B):
