@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.4.8)  18 DEC 2025 23:23
+This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.4.8)  20 DEC 2025 23:26
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -471,7 +471,8 @@ Package: fancyhdr 2025/02/07 v5.2 Extensive control of page headers and footers
 \f@nch@widthC=\skip81
 \f@nch@widthR=\skip82
 \@temptokenb=\toks33
-) (./main.aux)
+)
+No file main.aux.
 \openout1 = `main.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 28.
@@ -551,7 +552,6 @@ LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `bold'
 (Font)                  OT1/cmss/bx/n --> TU/lmss/b/n on input line 28.
 LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `bold'
 (Font)                  OT1/cmtt/m/n --> TU/lmtt/b/n on input line 28.
-
 *geometry* driver: auto-detecting
 *geometry* detected driver: xetex
 *geometry* verbose mode - [ preamble ] result:
@@ -587,12 +587,14 @@ LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `bold'
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
 Package hyperref Info: Link coloring OFF on input line 28.
-(./main.out) (./main.out)
 \@outlinefile=\write3
 \openout3 = `main.out'.
 
+
+Package hyperref Warning: Rerun to get /PageLabels entry.
+
 LaTeX Font Info:    Trying to load font information for U+msa on input line 34.
- (d:/Program Files/texlive/2025/texmf-dist/tex/latex/amsfonts/umsa.fd
+(d:/Program Files/texlive/2025/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
 LaTeX Font Info:    Trying to load font information for U+msb on input line 34.
@@ -603,7 +605,10 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 [1
 
 ]
-Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on input line 94.
+No file main.toc.
+\tf@toc=\write4
+\openout4 = `main.toc'.
+
 
 
 
@@ -622,7 +627,24 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
-[3]
+[1]
+
+LaTeX Warning: Reference `alg:rgd' on page 2 undefined on input line 92.
+
+Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on input line 94.
+
+LaTeX Warning: Reference `alg:rbb' on page 2 undefined on input line 125.
+
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[2]
 
 Package fontspec Info: 
 (fontspec)             Could not resolve font "FangSong/BI" (it probably
@@ -649,9 +671,11 @@ Package fontspec Info:
 (fontspec)             - 'normal' (m/n) with NFSS spec.:
 (fontspec)             <->"FangSong/OT:script=hani;language=dflt;"
 
+LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <12> not available
+(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 160.
 
-Overfull \hbox (10.41968pt too wide) in paragraph at lines 155--156
-[]\TU/SimSun(0)/b/n/12 对 比 基 准\TU/SimSun(0)/m/n/12 ：|  使 用 \TU/lmtt/m/n/12 scipy.optimize.minimize \TU/SimSun(0)/m/n/12 库 中 的 \TU/lmr/m/n/12 SLSQP (Sequential Least SQuares
+Overfull \hbox (25.0027pt too wide) in paragraph at lines 169--171
+[]\TU/SimSun(0)/b/n/12 线 搜 索 \TU/lmr/bx/n/12 (\TU/lmtt/b/n/12 LineSearch \TU/SimSun(0)/b/n/12 类\TU/lmr/bx/n/12 )\TU/SimSun(0)/m/n/12 ：|  实 现 了 通 用 的 回 退 法  |（\TU/lmr/m/n/12 Backtracking\TU/SimSun(0)/m/n/12 ） 。|  通 过 维 护 \TU/lmtt/m/n/12 self.history
  []
 
 
@@ -663,12 +687,16 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
+[3]
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
 [4]
-Overfull \hbox (33.08936pt too wide) in paragraph at lines 207--208
-[]\TU/SimSun(0)/m/n/12 在 流 形 上，|  如 果 点 $\OML/cmm/m/it/12 x[]$ \TU/SimSun(0)/m/n/12 是 局 部 最 优 解 且 满 足 线 性 无 关 约 束 品 性  |（\TU/lmr/m/n/12 LICQ\TU/SimSun(0)/m/n/12 ，|  即 $\OMS/cmsy/m/n/12 f[]\OML/cmm/m/it/12 c[]\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 x[]\OT1/cmr/m/n/12 )\OMS/cmsy/m/n/12 g[]$
- []
-
-
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
@@ -687,6 +715,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
 [6]
+
+LaTeX Warning: Reference `alg:active_set' on page 7 undefined on input line 298.
+
+
+Overfull \hbox (10.41968pt too wide) in paragraph at lines 299--300
+[]\TU/SimSun(0)/b/n/12 对 比 基 准\TU/SimSun(0)/m/n/12 ：|  使 用 \TU/lmtt/m/n/12 scipy.optimize.minimize \TU/SimSun(0)/m/n/12 库 中 的 \TU/lmr/m/n/12 SLSQP (Sequential Least SQuares
+ []
+
+
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
@@ -713,11 +750,121 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
-[9] (./main.aux)
+[9]
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[10]
+
+LaTeX Warning: Reference `alg:rlbfgs' on page 11 undefined on input line 442.
+
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[11]
+
+LaTeX Warning: Reference `alg:subspace_lbfgs' on page 12 undefined on input line 472.
+
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[12]
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[13]
+
+LaTeX Warning: Reference `tab:results' on page 14 undefined on input line 520.
+
+
+LaTeX Warning: Reference `fig:convergence' on page 14 undefined on input line 520.
+
+
+LaTeX Warning: Reference `tab:results' on page 14 undefined on input line 541.
+
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[14]
+Overfull \hbox (33.08936pt too wide) in paragraph at lines 576--577
+[]\TU/SimSun(0)/m/n/12 在 流 形 上，|  如 果 点 $\OML/cmm/m/it/12 x[]$ \TU/SimSun(0)/m/n/12 是 局 部 最 优 解 且 满 足 线 性 无 关 约 束 品 性  |（\TU/lmr/m/n/12 LICQ\TU/SimSun(0)/m/n/12 ，|  即 $\OMS/cmsy/m/n/12 f[]\OML/cmm/m/it/12 c[]\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 x[]\OT1/cmr/m/n/12 )\OMS/cmsy/m/n/12 g[]$
+ []
+
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[15]
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[16]
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[17]
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[18] (./main.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2022/07/14>
  ***********
+
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
 
 
 Package rerunfilecheck Warning: File `main.out' has changed.
@@ -725,16 +872,16 @@ Package rerunfilecheck Warning: File `main.out' has changed.
 (rerunfilecheck)                or use package `bookmark'.
 
 Package rerunfilecheck Info: Checksums for `main.out':
-(rerunfilecheck)             Before: 7C8B789EF83F2AC5A15606049847516A;2893
-(rerunfilecheck)             After:  39CA0F05325ACBCD04D4DE61A1B2A659;3458.
+(rerunfilecheck)             Before: <no file>
+(rerunfilecheck)             After:  C3769E9DDA94AC369C9FF9FE0A20F92F;6029.
  ) 
 Here is how much of TeX's memory you used:
- 16613 strings out of 475796
- 353215 string characters out of 5772564
- 774652 words of memory out of 5000000
- 39309 multiletter control sequences out of 15000+600000
- 568355 words of font info for 102 fonts, out of 8000000 for 9000
+ 16667 strings out of 475796
+ 355775 string characters out of 5772564
+ 773295 words of memory out of 5000000
+ 39361 multiletter control sequences out of 15000+600000
+ 568395 words of font info for 107 fonts, out of 8000000 for 9000
  36 hyphenation exceptions out of 8191
- 93i,12n,111p,537b,451s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 93i,12n,111p,537b,525s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on main.pdf (9 pages).
+Output written on main.pdf (20 pages).

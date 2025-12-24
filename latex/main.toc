@@ -1,0 +1,46 @@
+\contentsline {section}{\numberline {1}第一题}{1}{section.1}%
+\contentsline {subsection}{\numberline {1.1}问题描述}{1}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}理论总结}{1}{subsection.1.2}%
+\contentsline {subsubsection}{\numberline {1.2.1}黎曼梯度 (Riemannian Gradient)}{1}{subsubsection.1.2.1}%
+\contentsline {subsubsection}{\numberline {1.2.2}收缩映射 (Retraction)}{1}{subsubsection.1.2.2}%
+\contentsline {subsection}{\numberline {1.3}算法描述}{1}{subsection.1.3}%
+\contentsline {subsubsection}{\numberline {1.3.1}Algorithm 4.3：梯度下降法与线搜索}{1}{subsubsection.1.3.1}%
+\contentsline {subsubsection}{\numberline {1.3.2}Algorithm 4.4：BB 步长方法}{2}{subsubsection.1.3.2}%
+\contentsline {subsection}{\numberline {1.4}代码实现}{3}{subsection.1.4}%
+\contentsline {subsection}{\numberline {1.5}测试与结果}{4}{subsection.1.5}%
+\contentsline {section}{\numberline {2}第二题}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}算法总结：凸二次规划的有效集法 (Active-Set Method)}{4}{subsection.2.1}%
+\contentsline {subsubsection}{\numberline {2.1.1}问题定义}{4}{subsubsection.2.1.1}%
+\contentsline {subsubsection}{\numberline {2.1.2}核心机制：工作集 (Working Set)}{4}{subsubsection.2.1.2}%
+\contentsline {subsubsection}{\numberline {2.1.3}算法逻辑详解}{5}{subsubsection.2.1.3}%
+\contentsline {paragraph}{分支 A：计算搜索方向与步长}{5}{section*.2}%
+\contentsline {paragraph}{分支 B：检验最优性与剔除约束}{5}{section*.3}%
+\contentsline {subsubsection}{\numberline {2.1.4}算法伪代码}{5}{subsubsection.2.1.4}%
+\contentsline {subsubsection}{\numberline {2.1.5}收敛性分析}{6}{subsubsection.2.1.5}%
+\contentsline {subsection}{\numberline {2.2}数值实验：高维随机问题的求解}{7}{subsection.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.1}1. 实验数据构造}{7}{subsubsection.2.2.1}%
+\contentsline {subsubsection}{\numberline {2.2.2}2. 实验环境与对比基准}{7}{subsubsection.2.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.3}3. 实验结果}{7}{subsubsection.2.2.3}%
+\contentsline {section}{\numberline {3}第三题}{8}{section.3}%
+\contentsline {subsection}{\numberline {3.1}问题描述}{8}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}理论基础与几何工具}{8}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}黎曼梯度与切空间投影}{8}{subsubsection.3.2.1}%
+\contentsline {subsubsection}{\numberline {3.2.2}收缩映射 (Retraction)}{9}{subsubsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.3}黎曼 L-BFGS 算法描述}{9}{subsection.3.3}%
+\contentsline {subsubsection}{\numberline {3.3.1}算法流程}{9}{subsubsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.4}阻尼 L-BFGS 更新 (Damped L-BFGS)}{11}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}子空间方法 (Subspace Methods)}{11}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}数值实验与结果分析}{13}{subsection.3.6}%
+\contentsline {subsubsection}{\numberline {3.6.1}实验设置}{13}{subsubsection.3.6.1}%
+\contentsline {subsubsection}{\numberline {3.6.2}实验结果}{14}{subsubsection.3.6.2}%
+\contentsline {subsubsection}{\numberline {3.6.3}结果分析}{14}{subsubsection.3.6.3}%
+\contentsline {subsection}{\numberline {3.7}结论}{14}{subsection.3.7}%
+\contentsline {section}{\numberline {A}流形优化中的积极集算法 (Active-Set Methods)}{15}{appendix.A}%
+\contentsline {subsection}{\numberline {A.1}理论基础：流形上的约束与积极集}{15}{subsection.A.1}%
+\contentsline {subsubsection}{\numberline {A.1.1}问题描述}{15}{subsubsection.A.1.1}%
+\contentsline {subsubsection}{\numberline {A.1.2}积极集 (Active Set) 的定义}{15}{subsubsection.A.1.2}%
+\contentsline {subsubsection}{\numberline {A.1.3}最优性条件}{15}{subsubsection.A.1.3}%
+\contentsline {subsection}{\numberline {A.2}算法应用：切空间中的二次规划子问题}{15}{subsection.A.2}%
+\contentsline {subsubsection}{\numberline {A.2.1}子问题构造}{16}{subsubsection.A.2.1}%
+\contentsline {subsection}{\numberline {A.3}算法流程总结}{16}{subsection.A.3}%
+\contentsline {subsection}{\numberline {A.4}小结}{17}{subsection.A.4}%

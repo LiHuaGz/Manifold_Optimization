@@ -1,93 +1,145 @@
 import numpy as np
 import osqp
 from scipy import sparse
+from scipy.linalg import solve, cho_factor, cho_solve, solve_triangular
+from numba import njit
 import time
+
+@njit(cache=True)
+def _compute_step_length(Ap, Ax, b, working_mask, tol):
+    """Numba 加速的步长计算"""
+    n = len(Ap)
+    alpha = 1.0
+    blocking_idx = -1
+    
+    for i in range(n):
+        if not working_mask[i] and Ap[i] < -tol:
+            dist = (b[i] - Ax[i]) / Ap[i]
+            if dist < alpha:
+                alpha = dist
+                blocking_idx = i
+    
+    return max(0.0, alpha), blocking_idx
+
 
 def solve_active_set_qp(G, c, A, b, x0, tol=1e-6, max_iter=1000):
     """
     有效集法求解: min 1/2 x^T G x + c^T x, s.t. Ax >= b
+    高度优化版本：预计算 + Schur补 + Numba JIT
     """
     n_vars = len(c)
     n_constraints = len(b)
     
-    x = np.array(x0, dtype=float)
+    x = np.array(x0, dtype=np.float64)
     
-    # 初始工作集：找出当前所有 active 的约束 (Ax = b)
-    # 注意：为了数值稳定性，使用较宽松的 tol
-    residuals = A @ x - b
-    working_set = [i for i in range(n_constraints) if abs(residuals[i]) < tol]
+    # 预计算 G 的 Cholesky 分解
+    try:
+        G_cho = cho_factor(G)
+        use_cholesky = True
+    except:
+        use_cholesky = False
+    
+    # 关键优化：预计算 G^{-1} @ A^T，这是 n×m 矩阵
+    # 避免每次迭代都调用 cho_solve
+    if use_cholesky:
+        G_inv_AT = cho_solve(G_cho, A.T)  # n × m
+    else:
+        G_inv_AT = np.linalg.solve(G, A.T)
+    
+    # 预计算 A @ G^{-1} @ A^T 的完整矩阵（m × m）
+    # 这样 Schur 补只需取子矩阵
+    AG_inv_AT = A @ G_inv_AT  # m × m
+    
+    # 预计算 A @ x
+    Ax = A @ x
+    
+    # 工作集：使用布尔数组代替 set，更快
+    working_mask = np.zeros(n_constraints, dtype=np.bool_)
+    residuals = Ax - b
+    working_mask[np.abs(residuals) < tol] = True
     
     for k in range(max_iter):
-        # 1. 构造 KKT 系统求解 p
+        # 获取工作集索引
+        working_list = np.where(working_mask)[0]
+        n_active = len(working_list)
+        
+        # 计算梯度
         g = G @ x + c
         
-        # 构造 KKT 矩阵
-        # [ G   -A_w^T ] [ p      ] = [ -g ]
-        # [ A_w    0   ] [ lambda ]   [  0 ]
-        
-        if len(working_set) > 0:
-            A_w = A[working_set]
-            n_active = len(working_set)
-            
-            top = np.hstack([G, -A_w.T])
-            bot = np.hstack([A_w, np.zeros((n_active, n_active))])
-            KKT = np.vstack([top, bot])
-            rhs = np.hstack([-g, np.zeros(n_active)])
-            
-            try:
-                sol = np.linalg.solve(KKT, rhs)
-                p = sol[:n_vars]
-                lambdas = sol[n_vars:]
-            except np.linalg.LinAlgError:
-                # 遇到奇异矩阵，通常是因为约束线性相关，这里简单处理：剔除最后一个约束
-                working_set.pop()
-                continue
+        if n_active > 0:
+            if use_cholesky:
+                # 使用预计算的矩阵
+                G_inv_g = cho_solve(G_cho, g)
+                
+                # 取 G^{-1} @ A_w^T 的相关列
+                G_inv_AwT = G_inv_AT[:, working_list]  # n × n_active
+                
+                # Schur 补：直接取子矩阵
+                S = AG_inv_AT[np.ix_(working_list, working_list)]  # n_active × n_active
+                
+                # 求解 λ
+                rhs_lambda = G_inv_AwT.T @ g  # 等价于 A_w @ G^{-1} @ g
+                
+                try:
+                    S_cho = cho_factor(S)
+                    lambdas = cho_solve(S_cho, rhs_lambda)
+                except:
+                    try:
+                        lambdas = solve(S, rhs_lambda, assume_a='sym')
+                    except:
+                        working_mask[working_list[-1]] = False
+                        continue
+                
+                # p = -G^{-1}@g + G^{-1}@A_w^T @ λ
+                p = -G_inv_g + G_inv_AwT @ lambdas
+            else:
+                # 回退方法
+                A_w = A[working_list]
+                KKT_size = n_vars + n_active
+                KKT = np.zeros((KKT_size, KKT_size), dtype=np.float64)
+                KKT[:n_vars, :n_vars] = G
+                KKT[:n_vars, n_vars:] = -A_w.T
+                KKT[n_vars:, :n_vars] = A_w
+                
+                rhs = np.zeros(KKT_size, dtype=np.float64)
+                rhs[:n_vars] = -g
+                
+                try:
+                    sol = solve(KKT, rhs, assume_a='sym')
+                    p = sol[:n_vars]
+                    lambdas = sol[n_vars:]
+                except:
+                    working_mask[working_list[-1]] = False
+                    continue
         else:
-            # 无约束情况
-            p = np.linalg.solve(G, -g)
-            lambdas = []
+            if use_cholesky:
+                p = cho_solve(G_cho, -g)
+            else:
+                p = solve(G, -g, assume_a='pos')
+            lambdas = np.array([])
 
-        # 2. 检查 p 是否足够小 (是否收敛到子问题最优)
-        if np.linalg.norm(p) < tol:
-            # 检查拉格朗日乘子
-            if len(working_set) == 0:
+        # 检查收敛
+        p_norm_sq = np.dot(p, p)
+        if p_norm_sq < tol * tol:
+            if n_active == 0:
                 return x, k, "Optimal (Unconstrained)"
             
             min_lambda_idx = np.argmin(lambdas)
-            min_lambda = lambdas[min_lambda_idx]
-            
-            if min_lambda >= -tol:
+            if lambdas[min_lambda_idx] >= -tol:
                 return x, k, "Optimal (KKT Satisfied)"
             else:
-                # 剔除乘子为负的约束
-                # print(f"Iter {k}: Drop constraint {working_set[min_lambda_idx]}")
-                del working_set[min_lambda_idx]
+                working_mask[working_list[min_lambda_idx]] = False
         else:
-            # 3. 计算步长 alpha
-            alpha = 1.0
-            blocking_idx = -1
+            # 计算步长 - 使用 Numba 加速
+            Ap = A @ p
+            alpha, blocking_idx = _compute_step_length(Ap, Ax, b, working_mask, tol)
             
-            # 仅检查不在工作集中的约束
-            # 我们要保证 A_i(x + alpha*p) >= b_i
-            # 即 alpha * A_i * p >= b_i - A_i * x
-            for i in range(n_constraints):
-                if i not in working_set:
-                    ap = np.dot(A[i], p)
-                    if ap < -tol: # 只有朝着边界走才需要限制
-                        dist = (b[i] - np.dot(A[i], x)) / ap
-                        if dist < alpha:
-                            alpha = dist
-                            blocking_idx = i
-            
-            # 防止数值误差导致的极小步长
-            alpha = max(0.0, alpha)
-            
-            # 更新 x
+            # 更新
             x = x + alpha * p
+            Ax = Ax + alpha * Ap
             
-            if alpha < 1.0:
-                # print(f"Iter {k}: Hit constraint {blocking_idx}")
-                working_set.append(blocking_idx)
+            if blocking_idx >= 0:
+                working_mask[blocking_idx] = True
                 
     return x, max_iter, "Max Iterations Reached"
 
@@ -126,7 +178,7 @@ def generate_random_qp(n=100, m=50, seed=42):
 # ==========================================
 if __name__ == "__main__":
     # 设置规模：1000个变量，50个约束
-    N_VARS = 1000
+    N_VARS = 2000
     N_CONSTR = 500
     
     print(f"正在生成 {N_VARS} 维随机凸 QP 问题...")

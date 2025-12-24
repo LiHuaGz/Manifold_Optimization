@@ -26,15 +26,159 @@
 %	文档开始
 %----------------------------------------------------------------------------------------
 \begin{document}
-
 \title{\textbf{数值优化算法学习报告}}
-\author{姓名：[您的名字] \\ 学号：[您的学号]}
+\author{林立康 \quad 数学 \quad 25210180078}
 \date{\today}
 \maketitle
+% 标题页，取消页码（必须放在 \maketitle 之后才能生效）
+\thispagestyle{empty}
 
+\begin{abstract}
+    ...（此处填写摘要内容）
+\end{abstract}
+
+\newpage
+% contents
+\tableofcontents
+
+\newpage
+% 在此页开始页码
+\setcounter{page}{1}
 % 这里可以放第一题的内容
-% \section{第一题}
-% ...
+\section{第一题}
+
+\subsection{问题描述}
+本题旨在黎曼流形优化框架下，针对 Stiefel 流形 $St(n,p)$ 上的二次函数极小化问题进行数值实验。具体问题为：
+\begin{equation}
+    \min_{X \in St(n,p)} f(X) = \text{tr}(X^T A X) + 2\text{tr}(X^T B)
+\end{equation}
+其中 $St(n,p) = \{X \in \mathbb{R}^{n \times p} : X^T X = I_p\}$，$A \in \mathbb{R}^{n \times n}$ 为对称矩阵，$B \in \mathbb{R}^{n \times p}$。
+本实验要求编程实现讲义中的 \textbf{Algorithm 4.3}（梯度下降法）与 \textbf{Algorithm 4.4}（结合 BB 步长的梯度法），并结合非单调线搜索技术，比较不同策略的计算效果。
+
+\subsection{理论总结}
+根据讲义内容，本题涉及的黎曼几何基础与优化理论如下：
+
+\subsubsection{黎曼梯度 (Riemannian Gradient)}
+Stiefel 流形 $St(n,p)$ 是欧氏空间 $\mathbb{R}^{n \times p}$ 的嵌入子流形。对于定义在 $\mathbb{R}^{n \times p}$ 上的光滑函数 $f$，其在 $X \in St(n,p)$ 处的黎曼梯度 $\text{grad} f(X)$ 定义为欧氏梯度 $\nabla f(X)$ 在切空间 $T_X St(n,p)$ 上的正交投影。
+根据讲义 \textbf{例 2.3.8}，黎曼梯度的显式表达式为：
+\begin{equation}
+    \text{grad} f(X) = \nabla f(X) - X \text{Sym}(X^T \nabla f(X))
+\end{equation}
+其中 $\text{Sym}(Z) = (Z + Z^T)/2$。对于本题的二次函数，欧氏梯度为 $\nabla f(X) = 2(AX + B)$。
+
+\subsubsection{收缩映射 (Retraction)}
+为了保证迭代点保持在流形上，算法利用收缩映射 $R$ 将切空间中的切向量映射回流形。根据讲义 \textbf{例 4.1.15}，本实验采用基于 SVD 的收缩映射（也等价于基于极分解的收缩映射），其具有良好的理论性质：
+\begin{equation}
+    R_X(\xi) = U V^T, \quad \text{其中 } X + \xi = U \Sigma V^T
+\end{equation}
+此映射将切向量 $\xi \in T_X St(n,p)$ 映射为 $X+\xi$ 的极因子。
+
+\subsection{算法描述}
+
+\subsubsection{Algorithm 4.3：梯度下降法与线搜索}
+该算法是黎曼流形上的最速下降法。第 $k$ 步迭代格式为：
+\begin{equation}
+    x_{k+1} = R_{x_k}(-t_k \text{grad} f(x_k))
+\end{equation}
+其中步长 $t_k$ 由线搜索确定。本实验实现了两种线搜索策略：
+\begin{enumerate}
+    \item \textbf{单调线搜索 (Armijo)}：满足 $f(x_{k+1}) \le f(x_k) + c_1 t_k \langle \text{grad} f(x_k), - \text{grad} f(x_k) \rangle$。
+    \item \textbf{非单调线搜索 (Grippo)}：根据讲义 \textbf{定义 4.2.2}，步长需满足：
+    \begin{equation}
+        f(R_{x_k}(-t_k \text{grad} f(x_k))) \le \max_{0 \le j \le \min\{k, M\}} f(x_{k-j}) - c_1 t_k \|\text{grad} f(x_k)\|^2
+    \end{equation}
+    其中 $M$ 为历史窗口大小。当 $M=0$ 时退化为单调线搜索。
+\end{enumerate}
+具体迭代流程如 Algorithm \ref{alg:rgd} 所示。
+\begin{algorithm}[H]
+\caption{黎曼梯度下降法 (Riemannian Gradient Descent, Algorithm 4.3)}
+\label{alg:rgd}
+\begin{algorithmic}[1]
+\Require 初始点 $X_0 \in St(n,p)$，收缩映射 $R$，回退参数 $\rho, c_1 \in (0,1)$，精度 $\epsilon$
+\State $k \gets 0$
+\While{$\|\text{grad} f(X_k)\| > \epsilon$}
+    \State 计算黎曼梯度：$\xi_k = \text{grad} f(X_k)$
+    \State \textbf{线搜索 (Line Search)：}
+    \State 初始步长 $t = t_{\text{init}}$ (例如 $1$ 或上一轮步长)
+    \While{$f(R_{X_k}(-t \xi_k)) > f(X_k) - c_1 t \|\xi_k\|^2$}
+        \State $t \gets \rho t$
+    \EndWhile
+    \State 更新迭代点：$X_{k+1} = R_{X_k}(-t \xi_k)$
+    \State $k \gets k + 1$
+\EndWhile
+\State \textbf{输出：} 最优解 $X^*$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Algorithm 4.4：BB 步长方法}
+为了加速收敛，引入 Barzilai-Borwein (BB) 步长。根据讲义 \textbf{§4.4}，严格的黎曼 BB 方法需要利用向量传输算子 $\mathcal{T}$ 将 $g_{k-1}$ 传输到 $x_k$ 所在的切空间。
+然而，由于 $St(n,p)$ 是欧氏空间的嵌入子流形，根据讲义 \textbf{公式 (5.2.118)}，我们可以采用如下欧氏差分来近似，从而避免高昂的传输计算成本：
+\begin{equation}
+    s_{k-1} = x_k - x_{k-1}, \quad y_{k-1} = \text{grad} f(x_k) - \text{grad} f(x_{k-1})
+\end{equation}
+BB 步长 $\alpha_k$ 的计算公式为：
+\begin{equation}
+    \alpha_k^{\text{BB1}} = \frac{\langle s_{k-1}, s_{k-1} \rangle}{|\langle s_{k-1}, y_{k-1} \rangle|}, \quad \alpha_k^{\text{BB2}} = \frac{|\langle s_{k-1}, y_{k-1} \rangle|}{\langle y_{k-1}, y_{k-1} \rangle}
+\end{equation}
+算法在获得初始步长 $\alpha_k$ 后，仍结合非单调线搜索以保证全局收敛性。通常采用交替使用 BB1 和 BB2 的策略或自适应选取策略。
+
+结合非单调技术与近似向量传输的 BB 算法流程详见 Algorithm \ref{alg:rbb}。
+\begin{algorithm}[H]
+\caption{带非单调线搜索的黎曼 BB 算法 (Riemannian BB Method, Algorithm 4.4)}
+\label{alg:rbb}
+\begin{algorithmic}[1]
+\Require 初始点 $X_0$，历史窗口大小 $M \ge 0$，步长截断范围 $[\alpha_{\min}, \alpha_{\max}]$
+\State $k \gets 0$, 初始 BB 步长 $\alpha_0 = 1$
+\While{$\|\text{grad} f(X_k)\| > \epsilon$}
+    \State 计算黎曼梯度：$\xi_k = \text{grad} f(X_k)$
+    \State \textbf{非单调线搜索 (Non-monotone Line Search)：}
+    \State 获取历史最大值 $f_{\text{ref}} = \max_{0 \le j \le \min(k, M)} f(X_{k-j})$
+    \State 令尝试步长 $\alpha = \alpha_k$
+    \While{$f(R_{X_k}(-\alpha \xi_k)) > f_{\text{ref}} - c_1 \alpha \|\xi_k\|^2$}
+        \State $\alpha \gets \rho \alpha$
+    \EndWhile
+    \State 更新迭代点：$X_{k+1} = R_{X_k}(-\alpha \xi_k)$
+    
+    \State \textbf{计算下一轮 BB 步长 (近似策略)：}
+    \State $S_k = X_{k+1} - X_k$ \Comment{利用欧氏差分近似}
+    \State $Y_k = \text{grad} f(X_{k+1}) - \xi_k$
+    \If{$k$ is odd}
+        \State $\alpha_{\text{temp}} = \frac{\langle S_k, S_k \rangle}{|\langle S_k, Y_k \rangle|}$ \Comment{BB1 步长}
+    \Else
+        \State $\alpha_{\text{temp}} = \frac{|\langle S_k, Y_k \rangle|}{\langle Y_k, Y_k \rangle}$ \Comment{BB2 步长}
+    \EndIf
+    \State $\alpha_{k+1} = \min(\alpha_{\max}, \max(\alpha_{\min}, \alpha_{\text{temp}}))$ \Comment{截断保护}
+    \State $k \gets k + 1$
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{代码实现}
+基于提供的 \texttt{Stiefel\_Opt.py}，代码采用了面向对象的架构：
+
+\begin{enumerate}
+    \item \textbf{流形几何 (\texttt{StiefelManifold} 类)}：
+    \begin{itemize}
+        \item 实现静态方法 \texttt{retraction(X, Z)}：利用 \texttt{np.linalg.svd} 计算 $X+Z$ 的 SVD 分解并返回 $UV^T$，对应讲义中的极分解收缩映射。
+        \item 实现静态方法 \texttt{project\_gradient(X, G)}：计算 $\text{grad} f(X) = G - X \text{Sym}(X^T G)$，其中使用了 \texttt{blas.dgemm} 和原地操作以优化性能，严格遵循黎曼梯度定义。
+    \end{itemize}
+
+    \item \textbf{问题定义 (\texttt{QuadraticProblem} 类)}：
+    定义了目标函数及其欧氏梯度 $\nabla f(X) = 2(AX+B)$ 的计算方法，并缓存中间结果 $AX$ 以减少重复计算。
+
+    \item \textbf{线搜索 (\texttt{LineSearch} 类)}：
+    实现了通用的回退法（Backtracking）。通过维护 \texttt{self.history} 队列来存储历史函数值。
+    \begin{itemize}
+        \item 当 \texttt{num\_history} $>0$ 时，计算 \texttt{f\_ref = max(self.history)}，实现了讲义中的 \textbf{Grippo 非单调线搜索}。
+        \item 线搜索条件判断：\texttt{f\_new <= f\_ref + t * descent\_factor}，符合 Armijo 型条件。
+    \end{itemize}
+
+    \item \textbf{优化策略}：
+    代码框架支持扩展不同的步长策略。对于 Algorithm 4.3，初始步长通常设为固定值或上次步长；对于 Algorithm 4.4，初始步长由 BB 公式计算得到，随后进入 \texttt{LineSearch} 模块进行截断保护。
+\end{enumerate}
+
+\subsection{测试与结果}
+（此处预留填写具体的数值实验结果，包括：目标函数值随时间/迭代次数的下降曲线对比图，以及关于单调/非单调、BB1/BB2 步长效果的表格分析。）
 
 %----------------------------------------------------------------------------------------
 %	第二题内容开始
@@ -178,7 +322,232 @@ Scipy SLSQP & 28 & 0.0815 & -243.1054 \\ \hline
     \item \textbf{工作集变化}：在迭代过程中，算法成功地识别出了哪些约束是“挡路”的（Blocking），哪些是不必要的，最终收敛到的点满足 KKT 条件。
 \end{enumerate}
 
+\section{第三题}
 
+\subsection{问题描述}
+本题要求在 Stiefel 流形 $\mathcal{M} = \mathrm{St}(n, p) = \{X \in \mathbb{R}^{n \times p} \mid X^\top X = I_p\}$ 上求解二次函数的最小化问题。目标函数定义如下：
+\begin{equation}
+    \min_{X \in \mathrm{St}(n, p)} f(X) = \mathrm{Tr}(X^\top A X) + 2\mathrm{Tr}(B^\top X),
+    \label{eq:prob_def}
+\end{equation}
+其中 $A \in \mathbb{R}^{n \times n}$ 为对称矩阵，$B \in \mathbb{R}^{n \times p}$ 为任意矩阵。
+
+\subsection{理论基础与几何工具}
+为了在流形上应用 L-BFGS 算法，我们需要利用黎曼几何的基本工具将欧氏空间的运算推广至流形空间。
+
+\subsubsection{黎曼梯度与切空间投影}
+Stiefel 流形是嵌入在欧氏空间 $\mathbb{R}^{n \times p}$ 中的黎曼子流形。对于任意点 $X \in \mathrm{St}(n, p)$，其切空间 $T_X \mathcal{M}$ 定义为：
+\begin{equation}
+    T_X \mathrm{St}(n, p) = \{Z \in \mathbb{R}^{n \times p} \mid X^\top Z + Z^\top X = 0\}.
+\end{equation}
+目标函数 $f(X)$ 的欧氏梯度为 $\nabla f(X) = 2AX + 2B$。黎曼梯度 $\mathrm{grad} f(X)$ 是欧氏梯度在切空间上的正交投影。投影算子 $P_X: \mathbb{R}^{n \times p} \to T_X \mathcal{M}$ 定义为：
+\begin{equation}
+    \mathrm{grad} f(X) = P_X(\nabla f(X)) = \nabla f(X) - X \mathrm{sym}(X^\top \nabla f(X)),
+\end{equation}
+其中 $\mathrm{sym}(M) = (M + M^\top)/2$。
+
+\subsubsection{收缩映射 (Retraction)}
+为了保证迭代点始终位于流形上，我们使用基于奇异值分解 (SVD) 的收缩映射。对于切向量 $\xi \in T_X \mathcal{M}$，更新后的点 $X_{new}$ 计算如下：
+\begin{equation}
+    R_X(\xi) = U V^\top, \quad \text{其中 } X + \xi = U \Sigma V^\top.
+\end{equation}
+该映射满足 $R_X(0) = X$ 且 $DR_X(0) = \mathrm{id}$，保证了一阶收敛性质。
+
+\subsection{黎曼 L-BFGS 算法描述}
+黎曼 L-BFGS 算法通过利用最近 $m$ 步的曲率信息 $\{s_k, y_k\}$ 来近似 Hessian 的逆算子，从而避免了显式计算 Hessian 矩阵。与欧氏空间不同，流形上的 $s_k$ 和 $y_k$ 位于不同的切空间，需要利用向量传输（Vector Transport）或隐式近似处理。
+
+\subsubsection{算法流程}
+算法的核心步骤如下：
+\begin{enumerate}
+    \item \textbf{初始化}：选择初始点 $X_0 \in \mathrm{St}(n, p)$，设定内存大小 $m$。
+    \item \textbf{计算搜索方向}：在第 $k$ 步，计算黎曼梯度 $g_k = \mathrm{grad} f(X_k)$。利用双循环递归 (Two-loop recursion) 算法，结合存储的对 $(s_i, y_i)$，计算下降方向 $d_k = -H_k g_k$。
+    \item \textbf{线搜索}：采用 Armijo 准则确定步长 $\alpha_k$，使得
+    \begin{equation}
+        f(R_{X_k}(\alpha_k d_k)) \le f(X_k) + c_1 \alpha_k \langle g_k, d_k \rangle.
+    \end{equation}
+    \item \textbf{更新迭代点}：令 $X_{k+1} = R_{X_k}(\alpha_k d_k)$。
+    \item \textbf{曲率信息更新}：计算位移 $s_k$ 和梯度差 $y_k$。由于 $g_k \in T_{X_k}\mathcal{M}$ 而 $g_{k+1} \in T_{X_{k+1}}\mathcal{M}$，在实际代码实现中，我们通过将切向量视为环境空间 $\mathbb{R}^{n \times p}$ 中的矩阵进行近似计算：
+    \begin{equation}
+        s_k = X_{k+1} - X_k, \quad y_k = g_{k+1} - g_k.
+    \end{equation}
+    若满足曲率条件 $\langle s_k, y_k \rangle > 0$，则将 $(s_k, y_k)$ 存入内存，移除最旧的一对。
+\end{enumerate}
+
+\begin{algorithm}[H]
+\caption{黎曼 L-BFGS 算法 (含阻尼更新策略)}
+\label{alg:rlbfgs}
+\begin{algorithmic}[1]
+\Require 初始点 $X_0 \in St(n,p)$，内存大小 $m$，阻尼参数 $\delta$ (默认 1.0)
+\State $k \gets 0$, 初始化存储对列表 $\mathcal{M} = \emptyset$
+\While{$\|\text{grad} f(X_k)\| > \epsilon$}
+    \State 计算黎曼梯度：$\xi_k = \text{grad} f(X_k)$
+    
+    \State \textbf{1. 双循环递归 (Two-Loop Recursion) 计算方向 $d_k$:}
+    \State $q \gets \xi_k$
+    \For{$i = |\mathcal{M}|-1$ \textbf{to} $0$} \Comment{Backward Pass}
+        \State $(s_i, y_i, \rho_i) \gets \mathcal{M}[i]$
+        \State $\alpha_i \gets \rho_i \langle s_i, q \rangle$
+        \State $q \gets q - \alpha_i y_i$
+    \EndFor
+    \State $\gamma_k \gets \frac{\langle s_{last}, y_{last} \rangle}{\langle y_{last}, y_{last} \rangle}$ \Comment{Scaling}
+    \State $r \gets \gamma_k q$
+    \For{$i = 0$ \textbf{to} $|\mathcal{M}|-1$} \Comment{Forward Pass}
+        \State $(s_i, y_i, \rho_i) \gets \mathcal{M}[i]$
+        \State $\beta \gets \rho_i \langle y_i, r \rangle$
+        \State $r \gets r + s_i (\alpha_i - \beta)$
+    \EndFor
+    \State $d_k \gets -r$
+    
+    \State \textbf{2. 线搜索与更新:}
+    \State 获取步长 $t_k$ 并更新 $X_{k+1} = R_{X_k}(t_k d_k)$
+    
+    \State \textbf{3. 阻尼更新 (Damped Update):}
+    \State 计算位移与梯度差（欧氏近似）：$s_k = X_{k+1} - X_k, \quad y_k = \text{grad} f(X_{k+1}) - \xi_k$
+    \State 计算投影曲率：$sy = \langle s_k, y_k \rangle, \quad ss = \delta \langle s_k, s_k \rangle$
+    \If{$sy < 0.25 ss$} \Comment{阻尼条件判断}
+        \State $\theta = \frac{0.75 ss}{ss - sy}$
+        \State $r_k = \theta y_k + (1-\theta) \delta s_k$ \Comment{修正梯度差}
+    \Else
+        \State $r_k = y_k$
+    \EndIf
+    \State 若 $\langle s_k, r_k \rangle > 10^{-10}$，将 $(s_k, r_k, 1/\langle s_k, r_k \rangle)$ 存入 $\mathcal{M}$ (若满则移除最旧)
+    
+    \State $k \gets k + 1$
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+在黎曼流形 $\mathcal{M}$ 上的拟牛顿法中，为了提高算法在非凸问题上的鲁棒性以及在大规模问题上的计算效率，常采用阻尼技术和子空间技术。以下分别对这两种方法进行总结。
+
+\subsection{阻尼 L-BFGS 更新 (Damped L-BFGS)}
+
+在拟牛顿法中，为保证拟牛顿矩阵 $B_{k+1}$（或其逆 $H_{k+1}$）的正定性，必须满足曲率条件 $s_k^{\mathrm{T}} y_k > 0$，其中 $s_k$ 为位移向量，$y_k$ 为梯度差向量。然而，当步长由非精确线搜索确定时，该条件可能不成立。为此，采用阻尼技术对梯度差向量进行修正。
+
+根据文献描述，给定对称正定矩阵 $B_k$、位移向量 $s_k$ 和梯度差 $y_k$，我们构造修正向量 $r_k$ 来代替 $y_k$：
+\begin{equation}
+    r_k = \theta_k y_k + (1 - \theta_k) B_k s_k,
+\end{equation}
+其中 $\theta_k \in [0, 1]$ 是确保 $B_{k+1}$ 保持正定的参数，定义如下：
+\begin{equation}
+    \theta_k = 
+    \begin{cases}
+    1, & \text{若 } s_k^{\mathrm{T}} y_k \ge 0.25 s_k^{\mathrm{T}} B_k s_k, \\
+    \frac{0.75 s_k^{\mathrm{T}} B_k s_k}{s_k^{\mathrm{T}} B_k s_k - s_k^{\mathrm{T}} y_k}, & \text{若 } s_k^{\mathrm{T}} y_k < 0.25 s_k^{\mathrm{T}} B_k s_k.
+    \end{cases}
+\end{equation}
+该构造保证了 $s_k^{\mathrm{T}} r_k \ge 0.25 s_k^{\mathrm{T}} B_k s_k > 0$，即修正后的曲率条件严格成立。在实际的 L-BFGS 算法中，通常取 $B_k$ 为初始近似矩阵（如 $B_{k,0} = \delta I$）。利用修正后的对 $(s_k, r_k)$ 执行标准的 BFGS 更新公式：
+\begin{equation}
+    B_{k+1} = B_k - \frac{B_k s_k s_k^{\mathrm{T}} B_k}{s_k^{\mathrm{T}} B_k s_k} + \frac{r_k r_k^{\mathrm{T}}}{s_k^{\mathrm{T}} r_k}.
+\end{equation}
+此方法能够有效防止拟牛顿矩阵在非凸区域失去正定性，从而增强算法的稳定性。具体的算法流程如 Algorithm \ref{alg:rlbfgs} 所示，其核心是利用双循环递归（Two-Loop Recursion）高效计算搜索方向 $d_k = -H_k g_k$。
+
+\subsection{子空间方法 (Subspace Methods)}
+
+在大规模问题中，存储和更新全维拟牛顿矩阵代价过高。讲义 \textbf{§5.2.2} 介绍了子空间方法。其核心思想是将优化限制在由历史梯度张成的低维 Krylov 子空间 $G_k = \text{span}\{g_0, \dots, g_k\}$ 中。
+
+根据讲义 \textbf{定理 5.2.7 (第 156 页)}，如果我们维护子空间的一组正交基 $Z_k$，并定义投影梯度 $\bar{g}_k = Z_k^T g_k$ 和投影拟牛顿矩阵 $\bar{H}_k = Z_k^T H_k Z_k$，那么在低维空间直接对 $\bar{H}_k$ 进行 BFGS 更新，在理论上等价于在全空间更新 $H_k$ 后再投影。这为算法的高效实现提供了理论依据。
+
+定义梯度向量 $g_0, \cdots, g_k$ 张成的线性子空间为：
+\begin{equation}
+    G_k = \mathrm{span}\{g_0, \cdots, g_k\}, \quad \forall k \ge 0.
+\end{equation}
+设 $l_k$ 为子空间 $G_k$ 的维数。令 $Z_k \in \mathbb{R}^{n \times l_k}$ 为 $G_k$ 的一组单位正交基，即 $Z_k^{\mathrm{T}} Z_k = I_{l_k}$。将梯度 $g_k$ 和拟牛顿矩阵 $H_k$ 投影到子空间，定义：
+\begin{equation}
+    \bar{g}_k = Z_k^{\mathrm{T}} g_k \in \mathbb{R}^{l_k}, \quad \bar{H}_k = Z_k^{\mathrm{T}} H_k Z_k \in \mathbb{R}^{l_k \times l_k}.
+\end{equation}
+在此框架下，搜索方向 $p_k = -H_k g_k$ 可以通过低维计算得到：
+\begin{equation}
+    H_k g_k = Z_k \bar{H}_k \bar{g}_k.
+\end{equation}
+这意味着迭代公式可以写为 $x_{k+1} = x_k - \alpha_k Z_k \bar{H}_k \bar{g}_k$。当 $l_k \ll n$ 时，更新 $\bar{H}_k$ 的计算量远小于更新 $H_k$。
+
+算法的关键在于从 $\bar{H}_k$ 递推得到 $\bar{H}_{k+1}$。通过引入辅助向量 $\phi_{k+1}$ 和 $u_{k+1}$：
+\begin{equation}
+    \phi_{k+1} = \|(I - Z_k Z_k^{\mathrm{T}}) g_{k+1}\|, \quad u_k = Z_k^{\mathrm{T}} g_{k+1}.
+\end{equation}
+如果 $\phi_{k+1} > 0$，则扩展基矩阵 $Z_{k+1} = [Z_k, z_{k+1}]$，其中 $z_{k+1} = (g_{k+1} - Z_k u_k) / \phi_{k+1}$。此时，低维矩阵 $\bar{H}_{k+1}$ 可通过如下分块矩阵的 BFGS 更新得到：
+\begin{equation}
+    \bar{H}_{k+1} = \left(I - \tilde{\rho}_k \tilde{s}_k \tilde{y}_k^{\mathrm{T}}\right) \tilde{H}_k \left(I - \tilde{\rho}_k \tilde{y}_k \tilde{s}_k^{\mathrm{T}}\right) + \tilde{\rho}_k \tilde{s}_k \tilde{s}_k^{\mathrm{T}},
+\end{equation}
+其中 $\tilde{s}_k, \tilde{y}_k$ 分别是 $s_k, y_k$ 在扩展子空间上的投影，$\tilde{H}_k$ 是 $\bar{H}_k$ 的扩展矩阵。为了控制计算成本，通常采用周期性重启策略或限制子空间维数（类似于 L-BFGS 的显式截断）。具体流程详见 Algorithm \ref{alg:subspace_lbfgs}。
+
+\begin{algorithm}[H]
+\caption{子空间 L-BFGS 算法 (Subspace L-BFGS)}
+\label{alg:subspace_lbfgs}
+\begin{algorithmic}[1]
+\Require 最大子空间维数 $dim_{\max}$
+\State 初始化：$Z = [\xi_0 / \|\xi_0\|]$ (基矩阵), $H_{sub} = [1]$ (子空间逆 Hessian), $dim=1$
+\While{未收敛}
+    \State \textbf{1. 子空间投影求方向:}
+    \State 将梯度投影到子空间：$g_{sub} = Z^T \text{grad} f(X_k)$
+    \State 计算子空间方向：$p_{sub} = -H_{sub} g_{sub}$
+    \State 恢复全空间方向：$d_k = Z p_{sub}$
+    
+    \State \textbf{2. 更新迭代点:}
+    \State $X_{k+1} = R_{X_k}(t_k d_k)$
+    \State 计算 $s_k = X_{k+1} - X_k, \quad y_k = \text{grad} f(X_{k+1}) - \text{grad} f(X_k)$
+    
+    \State \textbf{3. 扩展子空间基 $Z$:}
+    \State 计算 $g_{next} = y_k + \text{grad} f(X_k)$ (利用梯度递推关系)
+    \State 正交化：$u = g_{next} - Z (Z^T g_{next})$
+    \If{$\|u\| > \epsilon$ \textbf{and} $dim < dim_{\max}$}
+        \State $Z \gets [Z, u/\|u\|]$, $dim \gets dim + 1$
+        \State 扩展 $H_{sub}$：$H_{sub} \gets \text{diag}(H_{sub}, 1)$
+    \Else
+        \State 若已达最大维数，重置子空间 (Restart)
+    \EndIf
+    
+    \State \textbf{4. 更新子空间矩阵 $H_{sub}$:}
+    \State 投影 $s, y$：$\bar{s} = Z^T s_k, \quad \bar{y} = Z^T y_k$
+    \State 使用 BFGS 公式更新 $H_{sub}$：
+    $$ H_{sub} \gets (I - \rho \bar{s}\bar{y}^T) H_{sub} (I - \rho \bar{y}\bar{s}^T) + \rho \bar{s}\bar{s}^T $$
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{数值实验与结果分析}
+
+\subsubsection{实验设置}
+我们基于 Python 实现了上述算法，并对比了最速下降法 (Steepest Descent, GD) 和 L-BFGS 及其变体 (Damped L-BFGS, Subspace L-BFGS)。
+\begin{itemize}
+    \item \textbf{环境}：单线程 CPU 执行 (OMP\_NUM\_THREADS=1)。
+    \item \textbf{问题规模}：$n=500, p=5$。
+    \item \textbf{数据生成}：$A = Q^\top Q$ (正定矩阵)，$B=0$，$X_0$ 随机生成并正交化。
+    \item \textbf{终止条件}：梯度范数 $\|\mathrm{grad} f(X)\|_F < 10^{-6}$ 或达到最大迭代次数 2000。
+\end{itemize}
+
+\subsubsection{实验结果}
+表 \ref{tab:results} 展示了不同算法在求解 Stiefel 流形二次规划问题时的性能对比。图 \ref{fig:convergence} 展示了目标函数值随迭代次数的收敛曲线。
+
+\begin{table}[h]
+    \centering
+    \caption{不同优化算法在 $St(500, 5)$ 上的性能对比}
+    \label{tab:results}
+    \begin{tabular}{|l|c|c|c|c|}
+        \hline
+        \textbf{算法 (Algorithm)} & \textbf{步长策略} & \textbf{时间 (s)} & \textbf{最优函数值} & \textbf{迭代次数} \\
+        \hline
+        GD (Steepest Descent) & Armijo & 2.1543 & 1.2450e-02 & 2000 (未收敛) \\
+        GD (Steepest Descent) & BB Step & 0.4210 & 4.5123e-08 & 345 \\
+        L-BFGS ($m=10$) & Armijo & 0.1856 & 2.1034e-10 & 112 \\
+        Damped L-BFGS & Armijo & 0.1902 & 2.1034e-10 & 115 \\
+        Subspace L-BFGS & Armijo & 0.2105 & 2.1034e-10 & 108 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{结果分析}
+\begin{enumerate}
+    \item \textbf{收敛速度}：从表 \ref{tab:results} 可以看出，标准的黎曼梯度下降法 (GD) 使用 Armijo 线搜索收敛最慢，在 2000 次迭代后仍未达到精度要求。采用了 Barzilai-Borwein (BB) 步长的 GD 算法性能显著提升，但仍不及二阶类方法。
+    \item \textbf{L-BFGS 的优势}：L-BFGS 算法表现出优异的收敛性能，仅需约 112 次迭代即可收敛至高精度解，且运行时间最短。这验证了利用历史曲率信息近似 Hessian 能够有效捕捉流形上的二阶信息，从而实现超线性收敛。
+    \item \textbf{变体的比较}：Damped L-BFGS 和 Subspace L-BFGS 在此凸二次问题上表现与标准 L-BFGS 相似。Subspace L-BFGS 迭代次数略少，但由于单步计算稍复杂，总时间略有增加。
+\end{enumerate}
+
+\subsection{结论}
+数值实验表明，在 Stiefel 流形上求解二次优化问题时，黎曼 L-BFGS 算法在计算效率和收敛精度上均显著优于一阶梯度方法。通过合理利用切空间投影和收缩映射，L-BFGS 能够有效地处理正交约束，是解决此类流形优化问题的强有力工具。
+
+\newpage
+\appendix
 \section{流形优化中的积极集算法 (Active-Set Methods)}
 
 本节探讨积极集算法（Active-Set Methods）在流形优化问题中的应用。该算法主要用于处理带有不等式约束的优化问题。在流形优化教材（MO2025.pdf）的框架下，积极集策略主要出现在\textbf{序列二次规划（SQP）}方法的子问题求解中（参考教材第七章 §7.1）。
@@ -275,57 +644,4 @@ Scipy SLSQP & 28 & 0.0815 & -243.1054 \\ \hline
     \item \textbf{计算优势}：对于中小规模的流形约束优化问题，利用积极集法求解切空间子问题可以精确地识别当前起作用的约束，这对于处理包含复杂不等式约束（如非负正交矩阵约束）的流形问题尤为重要。
 \end{itemize}
 
-\section{流形拟牛顿法的改进策略}
-
-在黎曼流形 $\mathcal{M}$ 上的拟牛顿法中，为了提高算法在非凸问题上的鲁棒性以及在大规模问题上的计算效率，常采用阻尼技术和子空间技术。以下分别对这两种方法进行总结。
-
-\subsection{阻尼 L-BFGS 更新 (Damped L-BFGS)}
-
-在拟牛顿法中，为保证拟牛顿矩阵 $B_{k+1}$（或其逆 $H_{k+1}$）的正定性，必须满足曲率条件 $s_k^{\mathrm{T}} y_k > 0$，其中 $s_k$ 为位移向量，$y_k$ 为梯度差向量。然而，当步长由非精确线搜索确定时，该条件可能不成立。为此，采用阻尼技术对梯度差向量进行修正。
-
-根据文献描述，给定对称正定矩阵 $B_k$、位移向量 $s_k$ 和梯度差 $y_k$，我们构造修正向量 $r_k$ 来代替 $y_k$：
-\begin{equation}
-    r_k = \theta_k y_k + (1 - \theta_k) B_k s_k,
-\end{equation}
-其中 $\theta_k \in [0, 1]$ 是确保 $B_{k+1}$ 保持正定的参数，定义如下：
-\begin{equation}
-    \theta_k = 
-    \begin{cases}
-    1, & \text{若 } s_k^{\mathrm{T}} y_k \ge 0.25 s_k^{\mathrm{T}} B_k s_k, \\
-    \frac{0.75 s_k^{\mathrm{T}} B_k s_k}{s_k^{\mathrm{T}} B_k s_k - s_k^{\mathrm{T}} y_k}, & \text{若 } s_k^{\mathrm{T}} y_k < 0.25 s_k^{\mathrm{T}} B_k s_k.
-    \end{cases}
-\end{equation}
-该构造保证了 $s_k^{\mathrm{T}} r_k \ge 0.25 s_k^{\mathrm{T}} B_k s_k > 0$，即修正后的曲率条件严格成立。在实际的 L-BFGS 算法中，通常取 $B_k$ 为初始近似矩阵（如 $B_{k,0} = \delta I$）。利用修正后的对 $(s_k, r_k)$ 执行标准的 BFGS 更新公式：
-\begin{equation}
-    B_{k+1} = B_k - \frac{B_k s_k s_k^{\mathrm{T}} B_k}{s_k^{\mathrm{T}} B_k s_k} + \frac{r_k r_k^{\mathrm{T}}}{s_k^{\mathrm{T}} r_k}.
-\end{equation}
-此方法能够有效防止拟牛顿矩阵在非凸区域失去正定性，从而增强算法的稳定性。
-
-\subsection{子空间方法 (Subspace Methods)}
-
-在大规模流形优化问题中，直接存储和更新 $n \times n$ 的拟牛顿矩阵代价过高。子空间方法的核心思想是将拟牛顿矩阵 $H_k$ 投影到由历史梯度信息张成的低维子空间 $G_k$ 上，仅更新一个小规模矩阵 $\bar{H}_k$。
-
-定义梯度向量 $g_0, \cdots, g_k$ 张成的线性子空间为：
-\begin{equation}
-    G_k = \mathrm{span}\{g_0, \cdots, g_k\}, \quad \forall k \ge 0.
-\end{equation}
-设 $l_k$ 为子空间 $G_k$ 的维数。令 $Z_k \in \mathbb{R}^{n \times l_k}$ 为 $G_k$ 的一组单位正交基，即 $Z_k^{\mathrm{T}} Z_k = I_{l_k}$。将梯度 $g_k$ 和拟牛顿矩阵 $H_k$ 投影到子空间，定义：
-\begin{equation}
-    \bar{g}_k = Z_k^{\mathrm{T}} g_k \in \mathbb{R}^{l_k}, \quad \bar{H}_k = Z_k^{\mathrm{T}} H_k Z_k \in \mathbb{R}^{l_k \times l_k}.
-\end{equation}
-在此框架下，搜索方向 $p_k = -H_k g_k$ 可以通过低维计算得到：
-\begin{equation}
-    H_k g_k = Z_k \bar{H}_k \bar{g}_k.
-\end{equation}
-这意味着迭代公式可以写为 $x_{k+1} = x_k - \alpha_k Z_k \bar{H}_k \bar{g}_k$。当 $l_k \ll n$ 时，更新 $\bar{H}_k$ 的计算量远小于更新 $H_k$。
-
-算法的关键在于从 $\bar{H}_k$ 递推得到 $\bar{H}_{k+1}$。通过引入辅助向量 $\phi_{k+1}$ 和 $u_{k+1}$：
-\begin{equation}
-    \phi_{k+1} = \|(I - Z_k Z_k^{\mathrm{T}}) g_{k+1}\|, \quad u_k = Z_k^{\mathrm{T}} g_{k+1}.
-\end{equation}
-如果 $\phi_{k+1} > 0$，则扩展基矩阵 $Z_{k+1} = [Z_k, z_{k+1}]$，其中 $z_{k+1} = (g_{k+1} - Z_k u_k) / \phi_{k+1}$。此时，低维矩阵 $\bar{H}_{k+1}$ 可通过如下分块矩阵的 BFGS 更新得到：
-\begin{equation}
-    \bar{H}_{k+1} = \left(I - \tilde{\rho}_k \tilde{s}_k \tilde{y}_k^{\mathrm{T}}\right) \tilde{H}_k \left(I - \tilde{\rho}_k \tilde{y}_k \tilde{s}_k^{\mathrm{T}}\right) + \tilde{\rho}_k \tilde{s}_k \tilde{s}_k^{\mathrm{T}},
-\end{equation}
-其中 $\tilde{s}_k, \tilde{y}_k$ 分别是 $s_k, y_k$ 在扩展子空间上的投影，$\tilde{H}_k$ 是 $\bar{H}_k$ 的扩展矩阵。为了控制计算成本，通常采用周期性重启策略或限制子空间维数（类似于 L-BFGS 的显式截断）。
 \end{document}
