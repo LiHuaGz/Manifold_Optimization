@@ -413,10 +413,10 @@ def save_latex_table(results_data, filename="benchmark_results.txt"):
     header = r"""
 \begin{table}[h]
     \centering
-    \caption{Optimization Algorithm Benchmarks}
+    \caption{优化算法性能对比}
     \begin{tabular}{|l|c|c|c|c|}
         \hline
-        \textbf{Method} & \textbf{Step Strategy} & \textbf{Time (s)} & \textbf{Min Cost} & \textbf{Iterations} \\
+        \textbf{方法} & \textbf{步长策略} & \textbf{时间 (秒)} & \textbf{最小成本} & \textbf{迭代次数} \\
         \hline
 """
     footer = r"""        \hline
@@ -726,32 +726,38 @@ def Q1():
         # 调用独立绘图函数
         plot_benchmark_results(group_results, group_name=group['name'])
 
-def Q3(fig_save_dir=None, text_save_dir=None):
+def Q3(fig_save_dir=None, text_save_dir=None, test_damped=False,test_subspace=False):
     '''
-    第三题：实现 Stiefel 流形 St(n, p) 上的 L-BFGS 算法，并以二次函数作为测试函数。针对不同的矩阵维度 (n, p) 进行数值实验，性能评估指标至少包括以下几项：代码运行时间、迭代次数、最优解处梯度的范数，最优解目标函数值。
+    第三题：实现 Stiefel 流形 St(n, p) 上的 L-BFGS 算法性能评估。
+    compare_variants: bool, 若为 True，则同时测试 SubspaceLBFGS 和 DampedLBFGS
     '''
     print(f"\n{'='*65}\nRunning Q3: Strictly Fair Scalability Benchmark\n{'='*65}")
-    print("Correction: Using consistent Random Matrix generation for ALL sizes")
-    print("to ensure spectral difficulty is comparable across dimensions.")
+    if test_damped:
+        if test_subspace:
+            print("Mode: Comparing [L-BFGS, Damped L-BFGS, Subspace L-BFGS]")
+        else:
+            print("Mode: Comparing [L-BFGS, Damped L-BFGS]")
+    else:
+        print("Mode: Standard [L-BFGS] only")
     print(f"{'-'*65}")
 
     experiments = {
         "Fixed_p": {
-            "desc": "Fixed p=10, Increasing n. Test pure computational load.",
+            "desc": "固定p=10, 增加 n",
             "dims": [
                 (1000, 10),
-                # (2000, 10),
-                # (4000, 10),
-                # (6000, 10) 
+                (2000, 10),
+                (4000, 10),
+                (6000, 10)            
             ]
         },
         "Fixed_n": {
-            "desc": "Fixed n=2000, Increasing p. Test manifold geometry complexity.",
+            "desc": "固定n=2000, 增加 p",
             "dims": [
                 (2000, 10),
-                # (2000, 50),
-                # (2000, 100),
-                # (2000, 200)
+                (2000, 50),
+                (2000, 100),
+                (2000, 200)            
             ]
         }
     }
@@ -760,6 +766,13 @@ def Q3(fig_save_dir=None, text_save_dir=None):
     lbfgs_m = 10
     max_iters = 1000
     tol = 1e-6
+
+    # 定义要测试的方法列表
+    methods_to_test = [("L-BFGS", LBFGS(m=lbfgs_m))]
+    if test_damped:
+        methods_to_test.append(("Damped", DampedLBFGS(m=lbfgs_m, delta=20.0)))
+    if test_subspace:
+        methods_to_test.append(("Subspace", SubspaceLBFGS(max_dim=20, delta=1.0)))
     
     for exp_name, exp_config in experiments.items():
         print(f"\n>>> Running {exp_name}: {exp_config['desc']}")
@@ -767,99 +780,137 @@ def Q3(fig_save_dir=None, text_save_dir=None):
         table_metrics = []
         
         for idx, (n, p) in enumerate(exp_config['dims']):
-            label = f"St({n}, {p})"
-            
-            # --- 【关键修正】统一数据生成 ---
-            # 不再使用 QR 分解（太慢）或 Low-Rank 近似（太简单）
-            # 使用 GOE (Gaussian Orthogonal Ensemble) 生成法
-            # 保证所有维度的矩阵都具有“同等难度”的全秩特征
+            # --- 统一数据生成 (保证对所有方法公平) ---
             np.random.seed(42 + n) 
             
-            # 1. 生成随机矩阵 (使用 float32 稍微加速生成，求解时会自动转 float64)
-            # 注意：对于 n=6000，生成矩阵约需 0.5s，内存约 280MB
+            # 生成随机矩阵
             A_raw = np.random.randn(n, n).astype(np.float32)
-            
-            # 2. 对称化
             A = (A_raw + A_raw.T) / 2
-            # 显式转回 float64 保证精度
             A = np.asfortranarray(A, dtype=np.float64) 
-            
-            # 释放原内存
             del A_raw; gc.collect()
             
             B = np.asfortranarray(np.zeros((n, p)))
-            x0, _ = np.linalg.qr(np.random.randn(n, p))
+            x0_base, _ = np.linalg.qr(np.random.randn(n, p))
             
-            # --- 求解 ---
+            # 初始化 Solver
             solver = StiefelSolver(n, p, A, B)
-            
-            # 进度条
-            pbar = tqdm(total=max_iters, desc=f"   {label:<12}", leave=True,
-                        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]")
-            
-            start_t = time.time()
-            # 依然使用 Zhang-Hager 线搜索，保证鲁棒性
-            _, f_vals, g_norms, iters = solver.solve(
-                x0, LBFGS(m=lbfgs_m), FixedStep(1.0), 
-                max_iters=max_iters, tol=tol, pbar=pbar,
-                ls_strategy='zhang_hager', zh_rho=0.5
-            )
-            elapsed = time.time() - start_t
-            pbar.close()
-            
-            t_per_k = elapsed / iters if iters > 0 else 0.0
-            
-            # --- 记录 ---
-            results_store[label] = {'f': np.array(f_vals), 'g': np.array(g_norms)}
-            table_metrics.append({
-                "n": n, "p": p,
-                "time": elapsed,
-                "iter": iters,
-                "t_per_k": t_per_k,
-                "grad": g_norms[-1]
-            })
-            
-            del A, solver, x0
+
+            # --- 遍历所选方法 ---
+            for method_name, d_strat in methods_to_test:
+                label = f"St({n},{p})-{method_name}"
+                
+                # 必须复制 x0，确保起点一致
+                x0 = x0_base.copy()
+
+                # 重置策略状态 (如果是带记忆的策略)
+                # 注：每次循环都重新实例化了 d_strat 对象吗？
+                # 上面的 methods_to_test 是在循环外定义的实例。
+                # LBFGS 类有内部状态 (memory)，必须手动重置或重新实例化。
+                # 为了安全，这里我们重新实例化策略，或者手动清空 memory。
+                # 这里简单起见，利用 type() 重新创建一个新的实例
+                if isinstance(d_strat, LBFGS):
+                    d_instance = type(d_strat)(m=lbfgs_m)
+                    if hasattr(d_strat, 'delta'): # Damped
+                        d_instance.delta = d_strat.delta
+                elif isinstance(d_strat, SubspaceLBFGS):
+                    d_instance = SubspaceLBFGS(max_dim=d_strat.max_dim, delta=d_strat.delta)
+                else:
+                    d_instance = d_strat
+
+                # 进度条
+                pbar = tqdm(total=max_iters, desc=f"   {label:<22}", leave=True,
+                            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]")
+                
+                start_t = time.time()
+                _, f_vals, g_norms, iters = solver.solve(
+                    x0, d_instance, FixedStep(1.0), 
+                    max_iters=max_iters, tol=tol, pbar=pbar,
+                    ls_strategy='zhang_hager', zh_rho=0.5
+                )
+                elapsed = time.time() - start_t
+                pbar.close()
+                
+                t_per_k = elapsed / iters if iters > 0 else 0.0
+                
+                # --- 记录 ---
+                results_store[label] = {'f': np.array(f_vals), 'g': np.array(g_norms)}
+                table_metrics.append({
+                    "n": n, "p": p,
+                    "method": method_name,
+                    "time": elapsed,
+                    "iter": iters,
+                    "t_per_k": t_per_k,
+                    "grad": g_norms[-1],
+                    "final_f": f_vals[-1]
+                })
+
+            # 清理大矩阵内存
+            del A, solver, x0_base
             gc.collect()
 
         # --- 1. 打印 ASCII 表格到控制台 ---
         print(f"\nResults for {exp_name}:")
-        print(f"{'Dims (n, p)':<15} | {'Total Time':<10} | {'Iters':<6} | {'Time/Iter (s)':<13} | {'Final |Grad|':<12}")
-        print("-" * 75)
+        print(f"{'Dims (n, p)':<15} | {'Method':<10} | {'Total Time':<10} | {'Iters':<6} | {'Time/Iter':<10} | {'Final |Grad|':<12} | {'Final f(X)':<14}")
+        print("-" * 105)
         for row in table_metrics:
             dims_str = f"({row['n']}, {row['p']})"
-            print(f"{dims_str:<15} | {row['time']:.4f}s    | {row['iter']:<6} | {row['t_per_k']:.6f}      | {row['grad']:.4e}")
-        print("-" * 75)
+            print(f"{dims_str:<15} | {row['method']:<10} | {row['time']:.4f}s    | {row['iter']:<6} | {row['t_per_k']:.6f}   | {row['grad']:.4e}   | {row['final_f']:.4e}")
+        print("-" * 105)
 
-        # --- 2. 保存 LaTeX 表格到文件 (新增功能) ---
+        # --- 2. 保存 LaTeX 表格到文件（分组格式，使用 multirow）---
         if text_save_dir:
             tex_filename = os.path.join(text_save_dir, 'Q3'+f"{exp_name}.tex")
             
-            # LaTeX 表格模板
-            header = r"""\begin{table}[htbp]
+            # LaTeX 表格头部（需要 \usepackage{multirow} 和 \usepackage{booktabs}）
+            header = r"""\begin{table}[H]
     \centering
-    \caption{Performance Benchmarks for """ + exp_config['desc'] + r"""}
-    \begin{tabular}{lcccc}
+    \caption{ """ + exp_config['desc'] + r"""}
+    \begin{tabular}{lcccccc}
         \toprule
-        \textbf{Dims} $(n, p)$ & \textbf{Time (s)} & \textbf{Iter} & \textbf{Time/Iter (s)} & \textbf{Final} $\|\nabla f\|$ \\
+        \textbf{维度} $(n, p)$ & \textbf{方法} & \textbf{时间 (秒)} & \textbf{迭代次数} & \textbf{每次迭代时间 (秒)} & \textbf{最终} $\|\nabla f\|$ & \textbf{最优解} $f(X^*)$ \\
         \midrule
 """
             footer = r"""        \bottomrule
     \end{tabular}
-    \label{tab:""" + exp_name + r"""}
+    \label{tab:""" + "Q3" + exp_name + r"""}
 \end{table}
 """
             try:
                 with open(tex_filename, "w", encoding='utf-8') as f:
                     f.write(header)
+                    
+                    # 按维度分组
+                    from collections import defaultdict
+                    grouped_data = defaultdict(list)
                     for row in table_metrics:
-                        # 格式化每行数据
-                        dims_str = f"$({row['n']}, {row['p']})$"
-                        # 梯度用科学计数法 1.23e-05，其他用浮点
-                        line = f"        {dims_str} & {row['time']:.4f} & {row['iter']} & {row['t_per_k']:.6f} & {row['grad']:.2e} \\\\\n"
-                        f.write(line)
+                        dims_key = (row['n'], row['p'])
+                        grouped_data[dims_key].append(row)
+                    
+                    # 遍历每个维度组
+                    for group_idx, (dims_key, group_rows) in enumerate(grouped_data.items()):
+                        n, p = dims_key
+                        dims_str = f"$({n}, {p})$"
+                        num_methods = len(group_rows)
+                        
+                        # 第一行：使用 multirow 合并维度列
+                        first_row = group_rows[0]
+                        if num_methods > 1:
+                            f.write(f"        \\multirow{{{num_methods}}}{{*}}{{{dims_str}}} ")
+                        else:
+                            f.write(f"        {dims_str} ")
+                        f.write(f"& {first_row['method']} & {first_row['time']:.4f} & {first_row['iter']} & {first_row['t_per_k']:.6f} & {first_row['grad']:.2e} & {first_row['final_f']:.4e} \\\\\n")
+                        
+                        # 后续行：维度列为空（由 multirow 填充）
+                        for row in group_rows[1:]:
+                            f.write(f"        & {row['method']} & {row['time']:.4f} & {row['iter']} & {row['t_per_k']:.6f} & {row['grad']:.2e} & {row['final_f']:.4e} \\\\\n")
+                        
+                        # 组间分隔线（最后一组除外）
+                        if group_idx < len(grouped_data) - 1:
+                            f.write(r"        \cmidrule{1-7}" + "\n")
+                    
                     f.write(footer)
                 print(f"LaTeX 表格已保存至: {os.path.abspath(tex_filename)}")
+                print(f"注意：需要在 LaTeX 导言区添加 \\usepackage{{multirow}} 和 \\usepackage{{booktabs}}")
             except Exception as e:
                 print(f"保存 LaTeX 表格失败: {e}")
         
@@ -874,4 +925,4 @@ if __name__ == "__main__":
         os.makedirs(fig_save_dir)
     if not os.path.exists(text_save_dir):
         os.makedirs(text_save_dir)
-    Q3(fig_save_dir=fig_save_dir, text_save_dir=text_save_dir)
+    Q3(fig_save_dir=fig_save_dir, text_save_dir=text_save_dir, test_damped=True, test_subspace=False)

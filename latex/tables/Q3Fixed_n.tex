@@ -1,12 +1,22 @@
-\begin{table}[htbp]
+\begin{table}[H]
     \centering
-    \caption{Performance Benchmarks for Fixed n=2000, Increasing p. Test manifold geometry complexity.}
-    \begin{tabular}{lcccc}
+    \caption{ 固定n=2000, 增加 p}
+    \begin{tabular}{lcccccc}
         \toprule
-        \textbf{Dims} $(n, p)$ & \textbf{Time (s)} & \textbf{Iter} & \textbf{Time/Iter (s)} & \textbf{Final} $\|\nabla f\|$ \\
+        \textbf{维度} $(n, p)$ & \textbf{方法} & \textbf{时间 (秒)} & \textbf{迭代次数} & \textbf{每次迭代时间 (秒)} & \textbf{最终} $\|\nabla f\|$ & \textbf{最优解} $f(X^*)$ \\
         \midrule
-        $(2000, 10)$ & 10.8647 & 1000 & 0.010865 & 8.77e-06 \\
+        \multirow{2}{*}{$(2000, 10)$} & L-BFGS & 6.8082 & 1000 & 0.006808 & 8.77e-06 & -6.1649e+02 \\
+        & Damped & 8.3062 & 741 & 0.011209 & 1.04e-06 & -6.1649e+02 \\
+        \cmidrule{1-7}
+        \multirow{2}{*}{$(2000, 50)$} & L-BFGS & 26.9133 & 717 & 0.037536 & 8.41e-06 & -2.9300e+03 \\
+        & Damped & 21.5760 & 545 & 0.039589 & 1.88e-05 & -2.9300e+03 \\
+        \cmidrule{1-7}
+        \multirow{2}{*}{$(2000, 100)$} & L-BFGS & 45.6244 & 404 & 0.112932 & 1.20e-05 & -5.5910e+03 \\
+        & Damped & 34.9982 & 467 & 0.074943 & 3.31e-05 & -5.5910e+03 \\
+        \cmidrule{1-7}
+        \multirow{2}{*}{$(2000, 200)$} & L-BFGS & 120.5502 & 717 & 0.168131 & 4.11e-05 & -1.0303e+04 \\
+        & Damped & 105.0700 & 692 & 0.151835 & 1.04e-05 & -1.0303e+04 \\
         \bottomrule
     \end{tabular}
-    \label{tab:Fixed_n}
+    \label{tab:Q3Fixed_n}
 \end{table}

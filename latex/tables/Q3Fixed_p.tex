@@ -1,12 +1,22 @@
-\begin{table}[htbp]
+\begin{table}[H]
     \centering
-    \caption{Performance Benchmarks for Fixed p=10, Increasing n. Test pure computational load.}
-    \begin{tabular}{lcccc}
+    \caption{ 固定p=10, 增加 n}
+    \begin{tabular}{lcccccc}
         \toprule
-        \textbf{Dims} $(n, p)$ & \textbf{Time (s)} & \textbf{Iter} & \textbf{Time/Iter (s)} & \textbf{Final} $\|\nabla f\|$ \\
+        \textbf{维度} $(n, p)$ & \textbf{方法} & \textbf{时间 (秒)} & \textbf{迭代次数} & \textbf{每次迭代时间 (秒)} & \textbf{最终} $\|\nabla f\|$ & \textbf{最优解} $f(X^*)$ \\
         \midrule
-        $(1000, 10)$ & 5.6189 & 1000 & 0.005619 & 2.97e-06 \\
+        \multirow{2}{*}{$(1000, 10)$} & L-BFGS & 2.8206 & 1000 & 0.002821 & 2.97e-06 & -4.3209e+02 \\
+        & Damped & 2.2744 & 666 & 0.003415 & 4.77e-06 & -4.3209e+02 \\
+        \cmidrule{1-7}
+        \multirow{2}{*}{$(2000, 10)$} & L-BFGS & 6.4118 & 1000 & 0.006412 & 8.77e-06 & -6.1649e+02 \\
+        & Damped & 7.9002 & 741 & 0.010662 & 1.04e-06 & -6.1649e+02 \\
+        \cmidrule{1-7}
+        \multirow{2}{*}{$(4000, 10)$} & L-BFGS & 21.8505 & 1000 & 0.021850 & 1.07e-05 & -8.8027e+02 \\
+        & Damped & 27.4297 & 837 & 0.032771 & 8.23e-06 & -8.8027e+02 \\
+        \cmidrule{1-7}
+        \multirow{2}{*}{$(6000, 10)$} & L-BFGS & 81.2151 & 791 & 0.102674 & 3.13e-06 & -1.0835e+03 \\
+        & Damped & 46.8948 & 470 & 0.099776 & 1.92e-05 & -1.0835e+03 \\
         \bottomrule
     \end{tabular}
-    \label{tab:Fixed_p}
+    \label{tab:Q3Fixed_p}
 \end{table}

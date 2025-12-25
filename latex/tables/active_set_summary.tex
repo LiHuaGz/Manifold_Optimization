@@ -1,0 +1,15 @@
+\begin{table}[htbp]
+\centering
+\caption{有效集法数值实验综合结果汇总}
+\label{tab:summary}
+\begin{tabular}{lccccc}
+\toprule
+测试类别 & 问题规模 & 平均时间 (s) & 平均迭代 & 最大目标差异 & 平均加速比 \\
+\midrule
+固定约束数量 & $n\in[50,2000]$, $m=100$ & 0.2526 & 67 & 1.02e-03 & 2.36 \\
+固定变量维度 & $n=500$, $m\in[50,500]$ & 0.3188 & 191 & 5.92e-03 & 0.88 \\
+大规模问题 & $n\in[1000,3000]$ & 4.4889 & 277 & 3.69e-03 & 1.92 \\
+条件数测试 & $\kappa\in[10,10^4]$ & 0.0244 & 53 & 4.31e-03 & 0.74 \\
+\bottomrule
+\end{tabular}
+\end{table}

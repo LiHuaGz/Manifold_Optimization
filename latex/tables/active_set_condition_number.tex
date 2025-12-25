@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+\centering
+\caption{不同条件数下的算法性能比较 ($n=300$, $m=100$)}
+\label{tab:condition_number}
+\begin{tabular}{ccccccc}
+\toprule
+条件数 & \multicolumn{2}{c}{有效集法} & \multicolumn{2}{c}{OSQP} & 目标差异 & 加速比 \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+$\kappa(G)$ & 时间 (s) & 迭代次数 & 时间 (s) & 迭代次数 & (绝对值) & \\
+\midrule
+$1e+01$ & 0.0230$\pm$0.0017 & 51 & 0.0182$\pm$0.0014 & -- & 1.59e-07 & 0.79 \\
+$1e+02$ & 0.0267$\pm$0.0020 & 54 & 0.0181$\pm$0.0018 & -- & 8.75e-06 & 0.68 \\
+$1e+03$ & 0.0236$\pm$0.0037 & 52 & 0.0171$\pm$0.0006 & -- & 3.40e-04 & 0.72 \\
+$1e+04$ & 0.0243$\pm$0.0040 & 54 & 0.0186$\pm$0.0022 & -- & 1.66e-03 & 0.77 \\
+\bottomrule
+\end{tabular}
+\end{table}
