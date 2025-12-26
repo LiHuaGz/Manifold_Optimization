@@ -1,26 +1,86 @@
-\documentclass[a4paper,12pt]{article}
+\documentclass[a4paper, 12pt]{article}
 
 %----------------------------------------------------------------------------------------
 %	宏包引入
 %----------------------------------------------------------------------------------------
 \usepackage[UTF8]{ctex}       % 中文支持
-\usepackage{amsmath, amssymb, amsthm} % 数学公式
+\usepackage{amsmath,  amssymb,  amsthm} % 数学公式
 \usepackage{algorithm}        % 算法浮动体
 \usepackage{algpseudocode}    % 伪代码排版
+
+% 算法环境中文化
+\floatname{algorithm}{算法}
+\renewcommand{\algorithmicrequire}{\textbf{输入:}}
+\renewcommand{\algorithmicensure}{\textbf{输出:}}
+
 \usepackage{geometry}         % 页面布局
 \usepackage{xcolor}           % 颜色支持
 \usepackage{hyperref}         % 超链接
 \usepackage{fancyhdr}         % 页眉页脚
 \usepackage{multirow}
 \usepackage{booktabs}
+\usepackage{longtable}        % 跨页长表格
 \usepackage{graphicx}         % 图片支持
 \usepackage{float}            % 浮动体控制 (H 选项)
 \usepackage{subcaption}       % 子图支持
+\usepackage{dirtree}          % 目录树结构
+\usepackage{listings}         % 代码高亮
+\usepackage{xcolor}           % 颜色支持(如已引入可忽略)
+
+% 定义代码高亮颜色
+\definecolor{codegreen}{rgb}{0.13,  0.55,  0.13}
+\definecolor{codegray}{rgb}{0.5,  0.5,  0.5}
+\definecolor{codepurple}{rgb}{0.58,  0,  0.82}
+\definecolor{codeblue}{rgb}{0.0,  0.4,  0.7}
+\definecolor{codeorange}{rgb}{0.8,  0.4,  0.0}
+\definecolor{backcolour}{rgb}{0.97,  0.97,  0.97}
+\definecolor{framecolor}{rgb}{0.75,  0.75,  0.75}
+
+% listings 代码高亮配置 - 现代风格
+\lstset{
+    language=Python, 
+    basicstyle=\ttfamily\footnotesize, 
+    keywordstyle=\color{codeblue}\bfseries, 
+    commentstyle=\color{codegreen}\itshape, 
+    stringstyle=\color{codeorange}, 
+    emphstyle=\color{codepurple}, 
+    numbers=left, 
+    numberstyle=\tiny\color{codegray}, 
+    stepnumber=1, 
+    numbersep=8pt, 
+    backgroundcolor=\color{backcolour}, 
+    showspaces=false, 
+    showstringspaces=false, 
+    showtabs=false, 
+    frame=single, 
+    framesep=3pt, 
+    rulecolor=\color{framecolor}, 
+    tabsize=4, 
+    captionpos=b, 
+    breaklines=true, 
+    breakatwhitespace=true, 
+    breakautoindent=true, 
+    xleftmargin=15pt, 
+    xrightmargin=5pt, 
+    aboveskip=10pt, 
+    belowskip=8pt, 
+    escapeinside={\%*}{*)}, 
+    morekeywords={self,  True,  False,  None,  as,  with,  yield,  async,  await}, 
+    emph={np,  blas,  ddot,  dgemm,  njit,  cho_factor,  cho_solve,  deque}, 
+    emphstyle=\color{codepurple}, 
+    literate=
+        {=}{{{\color{codepurple}=}}}1
+        {+}{{{\color{codepurple}+}}}1
+        {-}{{{\color{codepurple}-}}}1
+        {*}{{{\color{codepurple}*}}}1
+        {/}{{{\color{codepurple}/}}}1
+        {@}{{{\color{codepurple}@}}}1, 
+}
 
 %----------------------------------------------------------------------------------------
 %	页面设置
 %----------------------------------------------------------------------------------------
-\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm, headheight=14.5pt}
+\geometry{left=2.5cm,  right=2.5cm,  top=2.5cm,  bottom=2.5cm,  headheight=14.5pt}
 \pagestyle{fancy}
 \cfoot{\thepage}
 
@@ -28,15 +88,25 @@
 %	文档开始
 %----------------------------------------------------------------------------------------
 \begin{document}
-\title{\textbf{数值优化算法学习报告}}
+\title{\textbf{数值分析与科学计算期末报告}}
 \author{林立康 \quad 数学 \quad 25210180078}
 \date{\today}
 \maketitle
-% 标题页,取消页码(必须放在 \maketitle 之后才能生效)
+% 标题页, 取消页码(必须放在 \maketitle 之后才能生效)
 \thispagestyle{empty}
 
 \begin{abstract}
-    ...(此处填写摘要内容)
+ 本报告深入探讨了欧氏空间与黎曼流形上的数值优化算法, 重点研究了算法的理论推导、程序实现及性能评估.报告内容涵盖三个主要部分：
+
+首先, 针对 Stiefel 流形上的二次函数极小化问题, 实现了黎曼梯度下降法及结合 Barzilai-Borwein (BB) 步长的梯度算法.数值实验表明, 相比于单调线搜索与固定步长策略, \textbf{交替 BB 步长结合 Zhang-Hager 非单调线搜索}表现出显著的超线性收敛特性, 在 $n=1000$ 的规模下将计算时间缩短了约 90\%, 是解决此类问题的最优组合.
+
+其次, 针对凸二次规划(QP)问题, 编写了基于积极集策略的求解算法, 并与成熟求解器 OSQP 进行了对比测试.实验结果显示, 手写算法在\textbf{变量维度远大于约束数量}($n \gg m$)的稀疏约束场景下具有显著优势, 最高加速比可达 5.73 倍, 且对 Hessian 矩阵的条件数变化具有良好的鲁棒性；但在约束密集型问题中, 其效率低于一阶算法.
+
+最后, 研究了流形上的拟牛顿法, 对比了标准黎曼 L-BFGS 与阻尼 L-BFGS 算法的性能.结果证实, 在非凸的 Stiefel 流形约束下, 阻尼策略通过修正梯度差向量有效保证了曲率条件, 在大规模($n=6000$)及高列数($p=200$)的复杂测试中, 其收敛速度和稳定性均优于标准 L-BFGS 算法. 此外,  报告讨论了子空间方法在L-BFGS中的理论,  并进行了相关代码实现,  但由于实验效果不佳,  故未纳入正文.
+
+此外, 报告在附录中还详细讨论了代码优化,  包括基于 BLAS 库底层调用、Numba 即时编译、 Cholesky 预分解及缓存$AX$矩阵等方法.
+
+\par \textbf{关键词：}数值优化;Stiefel 流形; 梯度下降法; Barzilai-Borwein 步长; 积极集方法; 拟牛顿法; L-BFGS; 阻尼策略; 代码优化
 \end{abstract}
 
 \newpage
@@ -48,130 +118,131 @@
 \setcounter{page}{1}
 % 这里可以放第一题的内容
 \section{第一题}
-
+本章内容的实现代码在 \texttt{Stiefel\_Opt.py} 文件\texttt{Q1} 函数中.
 \subsection{问题描述}
-本题要求随机生成 Stiefel 流形的一个二次函数, 编程实现讲义中的 \textbf{Algorithm 4.3}(梯度下降法)与 \textbf{Algorithm 4.4}(结合 BB 步长的梯度法)极小化这个二次函数, 探索非单调的作用, 或者交替使用 BB步长两个公式的作用.
+本题要求随机生成 Stiefel 流形的一个二次函数,  编程实现讲义中的 \textbf{Algorithm 4.3}(梯度下降法)与 \textbf{Algorithm 4.4}(结合 BB 步长的梯度法)极小化这个二次函数,  探索非单调的作用,  或者交替使用 BB步长两个公式的作用.
 具体问题为:
 \begin{equation}
-    \min_{X \in St(n,p)} f(X) = \text{tr}(X^T A X) + 2\text{tr}(X^T B)
+    \min_{X \in St(n, p)} f(X) = \text{tr}(X^T A X) + 2\text{tr}(X^T B), 
 \end{equation}
-其中 $St(n,p) = \{X \in \mathbb{R}^{n \times p} : X^T X = I_p\}$, $A \in \mathbb{R}^{n \times n}$ 为对称矩阵, $B \in \mathbb{R}^{n \times p}$.
+其中 $St(n, p) = \{X \in \mathbb{R}^{n \times p} : X^T X = I_p\}$,  $A \in \mathbb{R}^{n \times n}$ 为对称矩阵,  $B \in \mathbb{R}^{n \times p}$.
 
 
 \subsection{理论总结}
-根据讲义内容,本题涉及的黎曼几何基础与优化理论如下:
+根据讲义内容, 本题涉及的黎曼几何基础与优化理论如下:
 
 \subsubsection{黎曼梯度 }
-Stiefel 流形 $St(n,p)$ 是欧氏空间 $\mathbb{R}^{n \times p}$ 的嵌入子流形.对于定义在 $\mathbb{R}^{n \times p}$ 上的光滑函数 $f$,其在 $X \in St(n,p)$ 处的黎曼梯度 $\text{grad} f(X)$ 定义为欧氏梯度 $\nabla f(X)$ 在切空间 $T_X St(n,p)$ 上的正交投影.
-根据讲义 \textbf{例 2.3.8},黎曼梯度的显式表达式为:
+Stiefel 流形 $St(n, p)$ 是欧氏空间 $\mathbb{R}^{n \times p}$ 的嵌入子流形.对于定义在 $\mathbb{R}^{n \times p}$ 上的光滑函数 $f$, 其在 $X \in St(n, p)$ 处的黎曼梯度 $\text{grad} f(X)$ 定义为欧氏梯度 $\nabla f(X)$ 在切空间 $T_X St(n, p)$ 上的正交投影.
+根据讲义 \textbf{例 2.3.8}, Stiefel流形上梯度的显式表达式为:
 \begin{equation}
-    \text{grad} f(X) = \nabla f(X) - X \text{Sym}(X^T \nabla f(X))
+    \text{grad} f(X) = \nabla f(X) - X \text{Sym}(X^T \nabla f(X)), 
 \end{equation}
-其中 $\text{Sym}(Z) = (Z + Z^T)/2$.对于本题的二次函数,欧氏梯度为 $\nabla f(X) = 2(AX + B)$.
+其中 $\text{Sym}(Z) = (Z + Z^T)/2$.对于本题的二次函数, 欧氏梯度为 $\nabla f(X) = 2(AX + B)$.
 
 \subsubsection{收缩映射}
-为了保证迭代点保持在流形上,算法利用收缩映射 $R$ 将切空间中的切向量映射回流形.根据讲义 \textbf{例 4.1.15},本实验采用基于 SVD 的收缩映射(也等价于基于极分解的收缩映射),其具有良好的理论性质:
+为了保证迭代点保持在流形上, 算法利用收缩映射 $R$ 将切空间中的切向量映射回流形.根据讲义 \textbf{例 4.1.15}, 本实验采用基于 SVD 的收缩映射(也等价于基于极分解的收缩映射):
 \begin{equation}
-    R_X(\xi) = U V^T, \quad \text{其中 } X + \xi = U \Sigma V^T
+    R_X(\xi) = U V^T,  \quad \text{其中 } X + \xi = U \Sigma V^T.
 \end{equation}
-此映射将切向量 $\xi \in T_X St(n,p)$ 映射为 $X+\xi$ 的极因子.
+此映射将切向量 $\xi \in T_X St(n, p)$ 映射为 $X+\xi$ 的极因子.
 
 \subsection{算法描述}
 
 \subsubsection{算法 4.3: 梯度下降法与线搜索}
 
-本节描述黎曼流形上的梯度下降算法。该算法是欧氏空间最速下降法在流形上的自然推广，其核心思想是沿负黎曼梯度方向在切空间中寻找下降方向，并通过收缩映射将切向量映射回流形。
+本节描述黎曼流形上的梯度下降算法.该算法是欧氏空间最速下降法在流形上的自然推广, 其核心思想是沿负黎曼梯度方向在切空间中寻找下降方向, 并通过收缩映射将切向量映射回流形.
 
-算法的第 $k$ 步迭代格式如下：
+算法的第 $k$ 步迭代格式如下:
 \begin{equation}
-    x_{k+1} = R_{x_k}(-\alpha_k \text{grad}f(x_k))
+    x_{k+1} = R_{x_k}(-\alpha_k \text{grad}f(x_k)), 
 \end{equation}
-其中，$\text{grad}f(x_k) \in T_{x_k}\mathcal{M}$ 为目标函数在 $x_k$ 处的黎曼梯度，$R$ 为收缩映射（本实验中采用基于 SVD 的极分解收缩映射），$\alpha_k > 0$ 为步长。
+其中, $\text{grad}f(x_k) \in T_{x_k}\mathcal{M}$ 为目标函数在 $x_k$ 处的黎曼梯度, $R$ 为收缩映射(本实验中采用基于 SVD 的极分解收缩映射), $\alpha_k > 0$ 为步长.
 
-为了保证算法的收敛性并获得良好的数值表现，步长 $\alpha_k$ 的选取至关重要。本实验实现了教材中所述的三种线搜索策略，分别对应单调与非单调的下降准则。
+为了保证算法的收敛性并获得良好的数值表现, 步长 $\alpha_k$ 的选取至关重要.本实验实现了教材中所述的三种线搜索策略, 分别对应单调与非单调的下降准则.
 
 \subsubsection{线搜索策略}
 
-设 $v_k = -\text{grad}f(x_k)$ 为搜索方向，$\rho \in (0, 1)$ 为回退因子，$c_1 \in (0, 1)$ 为充分下降参数。
+设 $v_k = -\text{grad}f(x_k)$ 为搜索方向, $\rho \in (0,  1)$ 为回退因子, $c_1 \in (0,  1)$ 为充分下降参数.
 
-\begin{itemize}
-    \item \textbf{单调线搜索 (Armijo 条件)} \\
-    该策略要求目标函数值在每一步都严格单调下降。步长 $\alpha_k$ 需满足如下充分下降条件：
-    \begin{equation}
-        f(R_{x_k}(\alpha_k v_k)) \le f(x_k) + c_1 \alpha_k \langle \text{grad}f(x_k), v_k \rangle
-    \end{equation}
-    在实际计算中，通常采用回退法：从初始步长开始，若不满足条件则令 $\alpha \leftarrow \rho \alpha$，直至满足为止。
+\textbf{(1) 单调线搜索 (Armijo)}
 
-    \item \textbf{Grippo 非单调线搜索} \\
-    为了避免算法陷入局部极小值并允许函数值在迭代初期出现短暂上升，Grippo 等人提出了基于历史最大值的非单调准则。根据教材 \textbf{定义 4.2.2}，步长需满足：
+    该策略要求目标函数值在每一步都严格单调下降.步长 $\alpha_k$ 需满足如下充分下降条件:
     \begin{equation}
-        f(R_{x_k}(\alpha_k v_k)) \le \max_{0 \le j \le \min\{k, M\}} f(x_{k-j}) + c_1 \alpha_k \langle \text{grad}f(x_k), v_k \rangle
+        f(R_{x_k}(\alpha_k v_k)) \le f(x_k) + c_1 \alpha_k \langle \text{grad}f(x_k),  v_k \rangle.
     \end{equation}
-    其中 $M \ge 0$ 为历史窗口大小。当 $M=0$ 时，该策略退化为标准的 Armijo 单调线搜索。
+    在实际计算中, 通常采用回退法:从初始步长开始, 若不满足条件则令 $\alpha \leftarrow \rho \alpha$, 直至满足为止.
 
-    \item \textbf{Zhang-Hager 非单调线搜索} \\
-    该策略利用历史函数值的加权平均来以此放宽下降条件，通常比 Grippo 策略表现更为平稳。根据教材 \textbf{定义 4.2.3}，步长需满足：
+    \textbf{(2) Grippo 非单调线搜索} 
+
+    为了避免算法陷入局部极小值并允许函数值在迭代初期出现短暂上升, Grippo 等人提出了基于历史最大值的非单调准则.根据教材 \textbf{定义 4.2.2}, 步长需满足:
     \begin{equation}
-        f(R_{x_k}(\alpha_k v_k)) \le C_k + c_1 \alpha_k \langle \text{grad}f(x_k), v_k \rangle
+        f(R_{x_k}(\alpha_k v_k)) \le \max_{0 \le j \le \min\{k,  M\}} f(x_{k-j}) + c_1 \alpha_k \langle \text{grad}f(x_k),  v_k \rangle, 
     \end{equation}
-    其中参考值 $C_k$ 按照如下递归方式更新：
+    其中 $M \ge 0$ 为历史窗口大小.当 $M=0$ 时, 该策略退化为标准的 Armijo 单调线搜索.
+
+    \textbf{(3) Zhang-Hager 非单调线搜索} 
+
+    该策略利用历史函数值的加权平均来以此放宽下降条件, 通常比 Grippo 策略表现更为平稳.根据教材 \textbf{定义 4.2.3}, 步长需满足:
+    \begin{equation}
+        f(R_{x_k}(\alpha_k v_k)) \le C_k + c_1 \alpha_k \langle \text{grad}f(x_k),  v_k \rangle, 
+    \end{equation}
+    其中参考值 $C_k$ 按照如下递归方式更新:
     \begin{equation}
         \begin{cases}
-            Q_{k+1} = \eta_k Q_k + 1, \quad Q_0 = 1 \\
-            C_{k+1} = \dfrac{\eta_k Q_k C_k + f(x_{k+1})}{Q_{k+1}}, \quad C_0 = f(x_0)
-        \end{cases}
+            Q_{k+1} = \eta_k Q_k + 1,  \quad Q_0 = 1 \\
+            C_{k+1} = \dfrac{\eta_k Q_k C_k + f(x_{k+1})}{Q_{k+1}},  \quad C_0 = f(x_0)
+        \end{cases}, 
     \end{equation}
-    这里 $\eta_k \in [\eta_{\min}, \eta_{\max}] \subset (0, 1)$ 为控制参数。
-\end{itemize}
+    这里 $\eta_k \in [\eta_{\min},  \eta_{\max}] \subset (0,  1)$ 为控制参数.
 
 \subsubsection{算法流程}
 
-基于上述理论，黎曼梯度下降法的完整流程如算法\ref{alg:RGD}所示。
+基于上述理论, 黎曼梯度下降法的完整流程如算法\ref{alg:RGD}所示.
 
 \begin{algorithm}[H]
     \caption{黎曼梯度下降法}
     \label{alg:RGD}
     \begin{algorithmic}[1]
-        \Require 初始点 $x_0 \in \text{St}(n, p)$，收缩映射 $R$，参数 $\rho, c_1 \in (0, 1)$，精度 $\epsilon$
+        \Require 初始点 $x_0 \in \text{St}(n,  p)$, 收缩映射 $R$, 参数 $\rho,  c_1 \in (0,  1)$, 精度 $\epsilon$
         \State $k \leftarrow 0$
         \While{$\|\text{grad}f(x_k)\| > \epsilon$}
-            \State 计算黎曼梯度：$\xi_k = \text{grad}f(x_k)$
+            \State 计算黎曼梯度:$\xi_k = \text{grad}f(x_k)$
             \State 设置初始尝试步长 $\alpha$ (例如 $\alpha=1$ 或上一轮步长)
             \State \textbf{Line Search:}
             \While{不满足选定的线搜索条件 (Armijo / Grippo / Zhang-Hager)}
                 \State $\alpha \leftarrow \rho \alpha$
             \EndWhile
-            \State 更新迭代点：$x_{k+1} = R_{x_k}(-\alpha \xi_k)$
-            \State 更新历史信息 (如 $C_{k+1}, Q_{k+1}$ 或存储 $f(x_{k+1})$ 到历史窗口)
+            \State 更新迭代点:$x_{k+1} = R_{x_k}(-\alpha \xi_k)$
+            \State 更新历史信息 (如 $C_{k+1},  Q_{k+1}$ 或存储 $f(x_{k+1})$ 到历史窗口)
             \State $k \leftarrow k + 1$
         \EndWhile
-        \State \textbf{输出：} 最优解 $x^*$
+        \State \textbf{输出:} 最优解 $x^*$
     \end{algorithmic}
 \end{algorithm}
 
 \subsubsection{算法 4.4: BB 步长方法}
-为了加速收敛,引入 Barzilai-Borwein (BB) 步长.根据讲义 \textbf{§4.4},严格的黎曼 BB 方法需要利用向量传输算子 $\mathcal{T}$ 将 $g_{k-1}$ 传输到 $x_k$ 所在的切空间.
-然而,由于 $St(n,p)$ 是欧氏空间的嵌入子流形,根据讲义 \textbf{公式 (5.2.118)},我们可以采用如下欧氏差分来近似,从而避免高昂的传输计算成本:
+为了加速收敛, 引入 Barzilai-Borwein (BB) 步长.根据讲义 \textbf{§4.4}, 严格的黎曼 BB 方法需要利用向量传输算子 $\mathcal{T}$ 将 $g_{k-1}$ 传输到 $x_k$ 所在的切空间.
+然而, 由于 $St(n, p)$ 是欧氏空间的嵌入子流形, 根据讲义 \textbf{公式 (5.2.118)}, 我们可以采用如下欧氏差分来近似, 从而避免高昂的传输计算成本:
 \begin{equation}
-    s_{k-1} = x_k - x_{k-1}, \quad y_{k-1} = \text{grad} f(x_k) - \text{grad} f(x_{k-1})
+    s_{k-1} = x_k - x_{k-1},  \quad y_{k-1} = \text{grad} f(x_k) - \text{grad} f(x_{k-1}).
 \end{equation}
 BB 步长 $\alpha_k$ 的计算公式为:
 \begin{equation}
-    \alpha_k^{\text{BB1}} = \frac{\langle s_{k-1}, s_{k-1} \rangle}{|\langle s_{k-1}, y_{k-1} \rangle|}, \quad \alpha_k^{\text{BB2}} = \frac{|\langle s_{k-1}, y_{k-1} \rangle|}{\langle y_{k-1}, y_{k-1} \rangle}
+    \alpha_k^{\text{BB1}} = \frac{\langle s_{k-1},  s_{k-1} \rangle}{|\langle s_{k-1},  y_{k-1} \rangle|},  \quad \alpha_k^{\text{BB2}} = \frac{|\langle s_{k-1},  y_{k-1} \rangle|}{\langle y_{k-1},  y_{k-1} \rangle}.
 \end{equation}
-算法在获得初始步长 $\alpha_k$ 后,仍结合非单调线搜索以保证全局收敛性.通常采用交替使用 BB1 和 BB2 的策略或自适应选取策略.
+算法在获得初始步长 $\alpha_k$ 后, 仍结合非单调线搜索以保证全局收敛性.通常采用交替使用 BB1 和 BB2 的策略或自适应选取策略.
 
 结合非单调技术与近似向量传输的 BB 算法流程详见 算法 \ref{alg:rbb}.
 \begin{algorithm}[H]
 \caption{带非单调线搜索的 BB 算法}
 \label{alg:rbb}
 \begin{algorithmic}[1]
-\Require 初始点 $X_0$,历史窗口大小 $M \ge 0$,步长截断范围 $[\alpha_{\min}, \alpha_{\max}]$
-\State $k \gets 0$, 初始 BB 步长 $\alpha_0 = 1$
+\Require 初始点 $X_0$, 历史窗口大小 $M \ge 0$, 步长截断范围 $[\alpha_{\min},  \alpha_{\max}]$
+\State $k \gets 0$,  初始 BB 步长 $\alpha_0 = 1$
 \While{$\|\text{grad} f(X_k)\| > \epsilon$}
     \State 计算黎曼梯度:$\xi_k = \text{grad} f(X_k)$
     \State \textbf{非单调线搜索 (代码中使用了Zhang-Hager方法):}
-    \State 获取历史最大值 $f_{\text{ref}} = \max_{0 \le j \le \min(k, M)} f(X_{k-j})$
+    \State 获取历史最大值 $f_{\text{ref}} = \max_{0 \le j \le \min(k,  M)} f(X_{k-j})$
     \State 令尝试步长 $\alpha = \alpha_k$
     \While{$f(R_{X_k}(-\alpha \xi_k)) > f_{\text{ref}} - c_1 \alpha \|\xi_k\|^2$}
         \State $\alpha \gets \rho \alpha$
@@ -182,85 +253,198 @@ BB 步长 $\alpha_k$ 的计算公式为:
     \State $S_k = X_{k+1} - X_k$ \Comment{利用欧氏差分近似}
     \State $Y_k = \text{grad} f(X_{k+1}) - \xi_k$
     \If{$k$ is odd}
-        \State $\alpha_{\text{temp}} = \frac{\langle S_k, S_k \rangle}{|\langle S_k, Y_k \rangle|}$ \Comment{BB1 步长}
+        \State $\alpha_{\text{temp}} = \frac{\langle S_k,  S_k \rangle}{|\langle S_k,  Y_k \rangle|}$ \Comment{BB1 步长}
     \Else
-        \State $\alpha_{\text{temp}} = \frac{|\langle S_k, Y_k \rangle|}{\langle Y_k, Y_k \rangle}$ \Comment{BB2 步长}
+        \State $\alpha_{\text{temp}} = \frac{|\langle S_k,  Y_k \rangle|}{\langle Y_k,  Y_k \rangle}$ \Comment{BB2 步长}
     \EndIf
-    \State $\alpha_{k+1} = \min(\alpha_{\max}, \max(\alpha_{\min}, \alpha_{\text{temp}}))$ \Comment{截断保护}
+    \State $\alpha_{k+1} = \min(\alpha_{\max},  \max(\alpha_{\min},  \alpha_{\text{temp}}))$ \Comment{截断保护}
     \State $k \gets k + 1$
 \EndWhile
 \end{algorithmic}
 \end{algorithm}
 
-\subsection{测试与结果}
-(此处预留填写具体的数值实验结果,包括:目标函数值随时间/迭代次数的下降曲线对比图,以及关于单调/非单调、BB1/BB2 步长效果的表格分析.)
+\subsection{数值实验与结果分析}
+
+本节通过数值实验验证梯度下降法(Algorithm 4.3)与 BB 步长方法(Algorithm 4.4)在 Stiefel 流形上的性能表现.实验分为三组, 分别考察不同线搜索策略和步长公式的影响.
+
+\subsubsection{实验设置}
+
+实验参数设置如下:
+\begin{itemize}
+    \item \textbf{问题规模}: 测试维度 $(n,  p) \in \{(500,  10),  (1000,  20)\}$
+    \item \textbf{矩阵生成}: $A$ 为对称正定矩阵, 条件数 $\kappa(A) = 10^4$, $B = 0$
+    \item \textbf{终止条件}: 梯度范数 $\|\mathrm{grad} f(X_k)\| < 10^{-9}$ 或达到最大迭代次数 1500
+    \item \textbf{线搜索参数}: $\rho = 0.5$,  $c_1 = 10^{-4}$
+    \item \textbf{实验环境}: AMD Ryzen 5 5500U,  16GB RAM,  Python 3.11
+\end{itemize}
+
+\subsubsection{实验组一: 固定步长下不同线搜索策略对比}
+
+表 \ref{tab:Q1_G1} 展示了使用固定初始步长(Armijo回退)时, 单调线搜索、Grippo 非单调线搜索($M=10$)和 Zhang-Hager 非单调线搜索($\rho=0.5$)的性能对比.
+
+\input{tables/Q1_G1.tex}
+
+图 \ref{fig:Q1_G1_gradnorm} 展示了对应的梯度范数收敛曲线.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.8\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/Q1_G1_n500_p10_gradnorm.png}
+        \caption{$n=500$,  $p=10$}
+    \end{subfigure}
+    
+    \vspace{0.5cm}
+    
+    \begin{subfigure}[b]{0.8\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/Q1_G1_n1000_p20_gradnorm.png}
+        \caption{$n=1000$,  $p=20$}
+    \end{subfigure}
+    \caption{固定步长下不同线搜索策略的梯度范数收敛曲线}
+    \label{fig:Q1_G1_gradnorm}
+\end{figure}
+
+\subsubsection{实验组二: BB步长下不同线搜索策略对比}
+
+表 \ref{tab:Q1_G2} 展示了使用 BB 交替步长时, 不同线搜索策略的性能对比.
+
+\input{tables/Q1_G2.tex}
+
+图 \ref{fig:Q1_G2_gradnorm} 展示了对应的梯度范数收敛曲线.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.8\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/Q1_G2_n500_p10_gradnorm.png}
+        \caption{$n=500$,  $p=10$}
+    \end{subfigure}
+    
+    \vspace{0.5cm}
+    
+    \begin{subfigure}[b]{0.8\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/Q1_G2_n1000_p20_gradnorm.png}
+        \caption{$n=1000$,  $p=20$}
+    \end{subfigure}
+    \caption{BB步长下不同线搜索策略的梯度范数收敛曲线}
+    \label{fig:Q1_G2_gradnorm}
+\end{figure}
+
+\subsubsection{实验组三: 不同步长公式对比}
+
+表 \ref{tab:Q1_G3} 展示了固定线搜索策略(Zhang-Hager)下, 不同步长公式(Armijo、BB1、BB2、BB交替)的性能对比.
+
+\input{tables/Q1_G3.tex}
+
+图 \ref{fig:Q1_G3_gradnorm} 展示了对应的梯度范数收敛曲线.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.8\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/Q1_G3_n500_p10_gradnorm.png}
+        \caption{$n=500$,  $p=10$}
+    \end{subfigure}
+    
+    \vspace{0.5cm}
+    
+    \begin{subfigure}[b]{0.8\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/Q1_G3_n1000_p20_gradnorm.png}
+        \caption{$n=1000$,  $p=20$}
+    \end{subfigure}
+    \caption{不同步长公式的梯度范数收敛曲线}
+    \label{fig:Q1_G3_gradnorm}
+\end{figure}
+
+\subsubsection{结果分析}
+
+基于上述三组数值实验的统计数据(表 1 至 表 3)以及对应的梯度范数收敛曲线(图 1 至 图 3), 我们可以对 Stiefel 流形上的黎曼梯度算法性能得出以下结论：
+
+\textbf{(1) 线搜索策略对收敛性的影响}
+
+从实验组一(表 1)可以看出, 在固定步长策略下, 传统的 Armijo 单调线搜索表现最为保守, 虽然能保证下降, 但在迭代 1500 次后往往难以达到高精度收敛(如 $n=1000$ 时最终梯度范数仍为 $1.70\times 10^1$).相比之下, 非单调线搜索策略(Grippo 和 Zhang-Hager)允许目标函数在迭代过程中出现暂时的上升, 这有助于算法跳出局部极小值或狭长山谷.特别是 Zhang-Hager (ZH) 策略, 在结合固定步长时表现出比 Grippo 更强的稳定性, 能够获得更低的最终梯度范数.
+
+\textbf{(2) BB 步长相对于固定步长的显著优势}
+
+对比实验组一和实验组二(表 1 与 表 2), 引入 Barzilai-Borwein (BB) 步长对算法性能带来了质的飞跃.在 $(1000,  20)$ 的规模下, 固定步长算法耗时约 60 秒且未完全收敛, 而结合 BB 步长的算法仅需约 6 秒即可达到收敛标准.这是因为 BB 步长有效地利用了前一步的梯度和位移信息来近似 Hessian 矩阵的特征值, 从而在不增加计算成本的情况下获得了近似牛顿法的超线性收敛特性.
+
+\textbf{(3) 不同 BB 步长公式的性能差异}
+
+实验组三(表 3)进一步体现了不同步长计算公式的差异.虽然 BB1(长步长)和 BB2(短步长)均显著优于固定步长, 但在本实验的二次目标函数中, BB2 步长表现出更快的收敛速度.例如在 $(1000,  20)$ 算例中, BB2 的耗时(5.31s)约为 BB1(9.98s)的一半.交替使用 BB1 和 BB2 (BB Alternating) 则提供了一种折衷且稳健的方案, 其性能接近于 BB2, 同时通过交替策略避免了单一长步长可能导致的剧烈震荡.
+
+\textbf{(4) 算法的整体鲁棒性}
+
+综合所有实验结果, \textbf{“交替 BB 步长 + Zhang-Hager 非单调线搜索”}的组合展现出了最佳的综合性能.该组合不仅在大规模问题上计算效率最高, 而且对初始步长的敏感度较低.图 3 的收敛曲线清晰地展示了该策略在迭代初期能迅速降低梯度范数, 并在后期保持稳定的超线性收敛速率, 是解决此类 Stiefel 流形优化问题的较优方案.
 
 %----------------------------------------------------------------------------------------
 %	第二题内容开始
 %----------------------------------------------------------------------------------------
 \section{第二题}
-
+本章内容的实现代码在\texttt{active\_set.py}文件中.
 \subsection{凸二次规划的积极集算法总结}
 
-本节总结求解凸二次规划问题的经典算法——积极集算法.该算法对应于 Nocedal \& Wright 教材中的 Algorithm 16.3.
+本节总结求解凸二次规划问题的积极集算法.该算法对应于 Nocedal \& Wright 教材中的 Algorithm 16.3.
 
 \subsubsection{问题定义}
 我们要解决的凸二次规划问题标准形式如下:
 \begin{equation} \label{eq:qp_problem}
 \begin{aligned}
 \min_{x \in \mathbb{R}^n} \quad & q(x) = \frac{1}{2}x^T G x + x^T c \\
-\text{s.t.} \quad & a_i^T x = b_i, \quad i \in \mathcal{E} \quad (\text{等式约束}) \\
-& a_i^T x \ge b_i, \quad i \in \mathcal{I} \quad (\text{不等式约束})
-\end{aligned}
+\text{s.t.} \quad & a_i^T x = b_i,  \quad i \in \mathcal{E} \quad (\text{等式约束}) \\
+& a_i^T x \ge b_i,  \quad i \in \mathcal{I} \quad (\text{不等式约束})
+\end{aligned}, 
 \end{equation}
-其中矩阵 $G$ 是半正定的,这是保证算法收敛到全局最优解的关键条件.
+其中矩阵 $G$ 是半正定的, 这是保证算法收敛到全局最优解的关键条件.
 
 \subsubsection{工作集的定义}
-算法的核心思想是通过迭代,动态调整``当前起作用的约束集合".在第 $k$ 次迭代中,我们定义一个\textbf{工作集} $\mathcal{W}_k$: 
-其一, $\mathcal{W}_k$ 是当前所有约束的一个子集.
-其二, 它包含所有等式约束 $\mathcal{E}$,以及部分在当前点 $x_k$ 处有效(即取等号)的不等式约束.
-其三, 假设$\mathcal{W}_k$ 中的约束梯度向量 $\{a_i\}_{i \in \mathcal{W}_k}$ 是线性无关的.
+算法的核心思想是通过迭代, 动态调整``当前起作用的约束集合".在第 $k$ 次迭代中, 我们定义一个工作集 $\mathcal{W}_k$: 
+其一,  $\mathcal{W}_k$ 是当前所有约束的一个子集.
+其二,  它包含所有等式约束 $\mathcal{E}$, 以及部分在当前点 $x_k$ 处有效(即取等号)的不等式约束.
+其三,  假设$\mathcal{W}_k$ 中的约束梯度向量 $\{a_i\}_{i \in \mathcal{W}_k}$ 是线性无关的.
 
-算法在每一步都将 $\mathcal{W}_k$ 中的约束视为等式,而暂时忽略其他不等式约束,从而将原问题转化为一个较简单的等式约束子问题(EQP).
+算法在每一步都将 $\mathcal{W}_k$ 中的约束视为等式, 而暂时忽略其他不等式约束, 从而将原问题转化为一个较简单的等式约束子问题(EQP).
 
 \subsubsection{算法的核心逻辑}
 算法的每一次迭代主要包含以下两个分支判断:
 
 \textbf{分支1: 计算搜索方向与步长}
 
-首先求解以 $\mathcal{W}_k$ 为等式约束的子问题,得到搜索方向 $p_k$.
-若 $p_k \neq 0$,说明还可以继续下降.此时需计算最大步长 $\alpha_k \in [0,1]$ 以保证不违反工作集之外的约束:
+首先求解以 $\mathcal{W}_k$ 为等式约束的子问题, 得到搜索方向 $p_k$.
+若 $p_k \neq 0$, 说明还可以继续下降.此时需计算最大步长 $\alpha_k \in [0, 1]$ 以保证不违反工作集之外的约束:
 $$
-\alpha_k = \min \left( 1, \quad \min_{i \notin \mathcal{W}_k, \, a_i^T p_k < 0} \frac{b_i - a_i^T x_k}{a_i^T p_k} \right)
+\alpha_k = \min \left( 1,  \quad \min_{i \notin \mathcal{W}_k,  \,  a_i^T p_k < 0} \frac{b_i - a_i^T x_k}{a_i^T p_k} \right).
 $$
-若 $\alpha_k < 1$,说明遇到了挡路约束,需将其加入工作集; 
-若 $\alpha_k = 1$,则直接移动到子问题的极小值点,工作集保持不变.
+若 $\alpha_k < 1$, 说明遇到了挡路约束, 需将其加入工作集; 
+若 $\alpha_k = 1$, 则直接移动到子问题的极小值点, 工作集保持不变.
 
 \textbf{分支2: 检验最优性与剔除约束}
 
-若 $p_k = 0$,说明在当前工作集子空间内已达最优.此时需检查拉格朗日乘子 $\hat{\lambda}$:
-$$ \sum_{i \in \mathcal{W}_k} a_i \hat{\lambda}_i = G x_k + c $$
+若 $p_k = 0$, 说明在当前工作集子空间内已达最优.此时需检查拉格朗日乘子 $\hat{\lambda}$:
+$$ \sum_{i \in \mathcal{W}_k} a_i \hat{\lambda}_i = G x_k + c. $$
 
-若所有不等式约束的乘子 $\hat{\lambda}_i \ge 0$,则满足 KKT 条件,找到全局最优解.
-若存在 $\hat{\lambda}_j < 0$,说明该约束阻碍了目标函数进一步下降,需将其从工作集中剔除.
+若所有不等式约束的乘子 $\hat{\lambda}_i \ge 0$, 则满足 KKT 条件, 找到全局最优解.
+若存在 $\hat{\lambda}_j < 0$, 说明该约束阻碍了目标函数进一步下降, 需将其从工作集中剔除.
 
 \subsubsection{算法伪代码}
 算法的完整流程如下所示:
 
-\begin{algorithm}[H]
-\caption{凸二次规划的有效集法 }
+\begin{algorithm}[htbp]
+\caption{凸二次规划的积极集算法 }
 \label{alg:active_set}
 \begin{algorithmic}[1]
-\State \textbf{初始化:} 计算一个可行初始点 $x_0$,并设定初始工作集 $\mathcal{W}_0$($\mathcal{W}_0 \subseteq \mathcal{A}(x_0)$).
-\For{$k = 0, 1, 2, \dots$}
+\State \textbf{初始化:} 计算一个可行初始点 $x_0$, 并设定初始工作集 $\mathcal{W}_0$($\mathcal{W}_0 \subseteq \mathcal{A}(x_0)$).
+\For{$k = 0,  1,  2,  \dots$}
     \State \textbf{步骤 1:求解 EQP 子问题}
     \State 求解以下问题得到搜索方向 $p_k$:
-    $$ \min_p \frac{1}{2}p^T G p + (Gx_k+c)^T p \quad \text{s.t.} \quad a_i^T p = 0, \forall i \in \mathcal{W}_k $$
+    $$ \min_p \frac{1}{2}p^T G p + (Gx_k+c)^T p \quad \text{s.t.} \quad a_i^T p = 0,  \forall i \in \mathcal{W}_k. $$
     
     \If{$p_k = 0$}
         \State \textbf{步骤 2:检查乘子}
         \State 计算满足 $\sum_{i \in \mathcal{W}_k} a_i \hat{\lambda}_i = G x_k + c$ 的拉格朗日乘子 $\hat{\lambda}$
-        \If{$\hat{\lambda}_i \ge 0, \quad \forall i \in \mathcal{W}_k \cap \mathcal{I}$}
+        \If{$\hat{\lambda}_i \ge 0,  \quad \forall i \in \mathcal{W}_k \cap \mathcal{I}$}
             \State \textbf{停止:} $x^* = x_k$ 即为全局最优解.
         \Else
             \State 选择使得 $\hat{\lambda}_j < 0$ 的约束索引 $j$(通常选最负的那个)
@@ -269,7 +453,7 @@ $$ \sum_{i \in \mathcal{W}_k} a_i \hat{\lambda}_i = G x_k + c $$
         \EndIf
     \Else 
         \State \textbf{步骤 3:计算步长}
-        \State 计算 $\alpha_k \leftarrow \min \left( 1, \min_{i \notin \mathcal{W}_k, a_i^T p_k < 0} \frac{b_i - a_i^T x_k}{a_i^T p_k} \right)$
+        \State 计算 $\alpha_k \leftarrow \min \left( 1,  \min_{i \notin \mathcal{W}_k,  a_i^T p_k < 0} \frac{b_i - a_i^T x_k}{a_i^T p_k} \right)$
         \State $x_{k+1} \leftarrow x_k + \alpha_k p_k$
         \If{$\alpha_k < 1$}
             \State 找到限制步长的挡路约束索引 $j$
@@ -284,38 +468,38 @@ $$ \sum_{i \in \mathcal{W}_k} a_i \hat{\lambda}_i = G x_k + c $$
 
 \subsubsection{收敛性分析}
 \begin{enumerate}
-    \item \textbf{有限终止性}:在非退化假设下,该算法保证在有限步内终止.原因是工作集的可能组合是有限的,且算法确保目标函数值在非最优点的迭代中严格下降,因此不会出现循环.
-    \item \textbf{全局最优性}:由于问题是凸规划,KKT 条件是全局最优的充分必要条件.当算法在 $p_k=0$ 且所有乘子非负时终止,即满足了 KKT 条件,从而保证解是全局最优的.
+    \item \textbf{有限终止性}:在非退化假设下, 该算法保证在有限步内终止.原因是工作集的可能组合是有限的, 且算法确保目标函数值在非最优点的迭代中严格下降, 因此不会出现循环.
+    \item \textbf{全局最优性}:由于问题是凸规划, KKT 条件是全局最优的充分必要条件.当算法在 $p_k=0$ 且所有乘子非负时终止, 即满足了 KKT 条件, 从而保证解是全局最优的.
 \end{enumerate}
 
 \subsection{数值实验与结果分析}
 
 \subsubsection{实验设置}
 
-为验证手写有效集法的正确性与效率,我们设计了多组数值实验,并与成熟的二次规划求解器 OSQP 进行对比.测试问题为标准形式的凸二次规划:
+为验证手写积极集算法的正确性与效率, 我们设计了多组数值实验, 并与成熟的二次规划求解器 OSQP 进行对比.测试问题为标准形式的凸二次规划:
 \begin{equation}
-    \min_{x \in \mathbb{R}^n} \frac{1}{2}x^T G x + c^T x \quad \text{s.t.} \quad Ax \ge b
+    \min_{x \in \mathbb{R}^n} \frac{1}{2}x^T G x + c^T x \quad \text{s.t.} \quad Ax \ge b, 
 \end{equation}
-其中 $G \in \mathbb{R}^{n \times n}$ 为随机生成的对称正定矩阵,$A \in \mathbb{R}^{m \times n}$,$c, b$ 为随机向量.
+其中 $G \in \mathbb{R}^{n \times n}$ 为随机生成的对称正定矩阵, $A \in \mathbb{R}^{m \times n}$, $c,  b$ 为随机向量.
 
 实验参数设置如下:
 \begin{itemize}
     \item \textbf{终止条件}:KKT 残差 $< 10^{-8}$ 或达到最大迭代次数
     \item \textbf{重复次数}:每组实验重复 5 次取平均值
-    \item \textbf{实验环境}:AMD Ryzen 5 5500U, 16GB RAM, Python 3.11
+    \item \textbf{实验环境}:AMD Ryzen 5 5500U,  16GB RAM,  Python 3.11
 \end{itemize}
 
 \subsubsection{固定约束数量的性能测试}
 
-表 \ref{tab:fixed_m} 展示了固定约束数量 $m=100$ 时,变量维度 $n$ 从 50 增加到 2000 的性能变化.
+表 \ref{tab:fixed_m} 展示了固定约束数量 $m=100$ 时, 变量维度 $n$ 从 50 增加到 2000 的性能变化.
 
 \begin{table}[H]
 \centering
-\caption{固定约束数量 $m=100$ 时，不同变量维度 $n$ 的性能比较}
+\caption{固定约束数量 $m=100$ 时, 不同变量维度 $n$ 的性能比较}
 \label{tab:fixed_m}
 \begin{tabular}{ccccccc}
 \toprule
-$n$ & \multicolumn{2}{c}{有效集法} & \multicolumn{2}{c}{OSQP} & 目标差异 & 加速比 \\
+$n$ & \multicolumn{2}{c}{积极集算法} & \multicolumn{2}{c}{OSQP} & 目标差异 & 加速比 \\
 \cmidrule(lr){2-3} \cmidrule(lr){4-5}
  & 时间 (s) & 迭代次数 & 时间 (s) & 迭代次数 & (绝对值) & \\
 \midrule
@@ -330,19 +514,19 @@ $n$ & \multicolumn{2}{c}{有效集法} & \multicolumn{2}{c}{OSQP} & 目标差异
 \end{tabular}
 \end{table}
 
-从表 \ref{tab:fixed_m} 可以观察到:当变量维度 $n$ 较大(如 $n \ge 500$)时,有效集法相比 OSQP 展现出明显的速度优势,加速比可达 5.73 倍.这是因为有效集法的每次迭代仅需求解一个等式约束子问题,而 OSQP 作为一阶方法需要更多迭代才能达到相同精度.
+从表 \ref{tab:fixed_m} 可以观察到:当变量维度 $n$ 较大(如 $n \ge 500$)时, 积极集算法相比 OSQP 展现出明显的速度优势, 加速比可达 5.73 倍.这是因为积极集算法的每次迭代仅需求解一个等式约束子问题, 而 OSQP 作为一阶方法需要更多迭代才能达到相同精度.
 
 \subsubsection{固定变量维度的性能测试}
 
-表 \ref{tab:fixed_n} 展示了固定变量维度 $n=500$ 时,约束数量 $m$ 从 50 增加到 500 的性能变化.
+表 \ref{tab:fixed_n} 展示了固定变量维度 $n=500$ 时, 约束数量 $m$ 从 50 增加到 500 的性能变化.
 
 \begin{table}[H]
 \centering
-\caption{固定变量维度 $n=500$ 时，不同约束数量 $m$ 的性能比较}
+\caption{固定变量维度 $n=500$ 时, 不同约束数量 $m$ 的性能比较}
 \label{tab:fixed_n}
 \begin{tabular}{ccccccc}
 \toprule
-$m$ & \multicolumn{2}{c}{有效集法} & \multicolumn{2}{c}{OSQP} & 目标差异 & 加速比 \\
+$m$ & \multicolumn{2}{c}{积极集算法} & \multicolumn{2}{c}{OSQP} & 目标差异 & 加速比 \\
 \cmidrule(lr){2-3} \cmidrule(lr){4-5}
  & 时间 (s) & 迭代次数 & 时间 (s) & 迭代次数 & (绝对值) & \\
 \midrule
@@ -356,7 +540,7 @@ $m$ & \multicolumn{2}{c}{有效集法} & \multicolumn{2}{c}{OSQP} & 目标差异
 \end{tabular}
 \end{table}
 
-从表 \ref{tab:fixed_n} 可以看出:当约束数量 $m$ 增大时,有效集法的迭代次数显著增加(从 32 次增至 415 次),导致总时间增长.这符合有效集法的理论特性——最坏情况下可能需要遍历所有约束组合.相比之下,OSQP 的迭代次数相对稳定.
+从表 \ref{tab:fixed_n} 可以看出:当约束数量 $m$ 增大时, 积极集算法的迭代次数显著增加(从 32 次增至 415 次), 导致总时间增长.这符合积极集算法的理论特性——最坏情况下可能需要遍历所有约束组合.相比之下, OSQP 的迭代次数相对稳定.
 
 \subsubsection{大规模问题测试}
 
@@ -368,7 +552,7 @@ $m$ & \multicolumn{2}{c}{有效集法} & \multicolumn{2}{c}{OSQP} & 目标差异
 \label{tab:large_scale}
 \begin{tabular}{cccccccc}
 \toprule
-$n$ & $m$ & \multicolumn{2}{c}{有效集法} & \multicolumn{2}{c}{OSQP} & 目标差异 & 加速比 \\
+$n$ & $m$ & \multicolumn{2}{c}{积极集算法} & \multicolumn{2}{c}{OSQP} & 目标差异 & 加速比 \\
 \cmidrule(lr){3-4} \cmidrule(lr){5-6}
  &  & 时间 (s) & 迭代次数 & 时间 (s) & 迭代次数 & (绝对值) & \\
 \midrule
@@ -381,7 +565,7 @@ $n$ & $m$ & \multicolumn{2}{c}{有效集法} & \multicolumn{2}{c}{OSQP} & 目标
 \end{tabular}
 \end{table}
 
-实验结果表明:在大规模问题上,有效集法仍然保持了对 OSQP 的速度优势,加速比稳定在 1.6--2.4 倍之间.目标函数值的差异(绝对值)均在 $10^{-3}$ 量级以下,验证了算法的准确性.
+实验结果表明:在大规模问题上, 积极集算法仍然保持了对 OSQP 的速度优势, 加速比稳定在 1.6--2.4 倍之间.目标函数值的差异(绝对值)均在 $10^{-3}$ 量级以下, 验证了算法的准确性.
 
 \subsubsection{条件数敏感性测试}
 
@@ -389,11 +573,11 @@ $n$ & $m$ & \multicolumn{2}{c}{有效集法} & \multicolumn{2}{c}{OSQP} & 目标
 
 \begin{table}[H]
 \centering
-\caption{不同条件数下的算法性能比较 ($n=300$, $m=100$)}
+\caption{不同条件数下的算法性能比较 ($n=300$,  $m=100$)}
 \label{tab:condition_number}
 \begin{tabular}{ccccccc}
 \toprule
-条件数 & \multicolumn{2}{c}{有效集法} & \multicolumn{2}{c}{OSQP} & 目标差异 & 加速比 \\
+条件数 & \multicolumn{2}{c}{积极集算法} & \multicolumn{2}{c}{OSQP} & 目标差异 & 加速比 \\
 \cmidrule(lr){2-3} \cmidrule(lr){4-5}
 $\kappa(G)$ & 时间 (s) & 迭代次数 & 时间 (s) & 迭代次数 & (绝对值) & \\
 \midrule
@@ -405,7 +589,7 @@ $1e+04$ & 0.0243$\pm$0.0040 & 54 & 0.0186$\pm$0.0022 & -- & 1.66e-03 & 0.77 \\
 \end{tabular}
 \end{table}
 
-从表 \ref{tab:condition_number} 可以看出:有效集法对条件数的变化表现出良好的鲁棒性,迭代次数和运行时间几乎不受条件数影响.然而,随着条件数增大,目标函数值的差异有所增加,这主要是由于数值精度的限制.
+从表 \ref{tab:condition_number} 可以看出:积极集算法对条件数的变化表现出良好的鲁棒性, 迭代次数和运行时间几乎不受条件数影响.然而, 随着条件数增大, 目标函数值的差异有所增加, 这主要是由于数值精度的限制.
 
 \subsubsection{综合结果汇总}
 
@@ -413,82 +597,82 @@ $1e+04$ & 0.0243$\pm$0.0040 & 54 & 0.0186$\pm$0.0022 & -- & 1.66e-03 & 0.77 \\
 
 \begin{table}[H]
 \centering
-\caption{有效集法数值实验综合结果汇总}
+\caption{积极集算法数值实验综合结果汇总}
 \label{tab:summary}
 \begin{tabular}{lccccc}
 \toprule
 测试类别 & 问题规模 & 平均时间 (s) & 平均迭代 & 最大目标差异 & 平均加速比 \\
 \midrule
-固定约束数量 & $n\in[50,2000]$, $m=100$ & 0.2526 & 67 & 1.02e-03 & 2.36 \\
-固定变量维度 & $n=500$, $m\in[50,500]$ & 0.3188 & 191 & 5.92e-03 & 0.88 \\
-大规模问题 & $n\in[1000,3000]$ & 4.4889 & 277 & 3.69e-03 & 1.92 \\
-条件数测试 & $\kappa\in[10,10^4]$ & 0.0244 & 53 & 4.31e-03 & 0.74 \\
+固定约束数量 & $n\in[50, 2000]$,  $m=100$ & 0.2526 & 67 & 1.02e-03 & 2.36 \\
+固定变量维度 & $n=500$,  $m\in[50, 500]$ & 0.3188 & 191 & 5.92e-03 & 0.88 \\
+大规模问题 & $n\in[1000, 3000]$ & 4.4889 & 277 & 3.69e-03 & 1.92 \\
+条件数测试 & $\kappa\in[10, 10^4]$ & 0.0244 & 53 & 4.31e-03 & 0.74 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsubsection{结论}
 
-数值实验验证了手写有效集法的正确性与效率.
-其一, 笔者所写代码的计算结果与 OSQP 求解器的目标函数值差异均在 $10^{-3}$ 量级以下,表明算法实现正确.
-其二, 积极集算法更适合 $n \gg m$ 的问题;当约束数量 $m$ 接近或超过变量维度 $n$ 时,一阶方法(如 OSQP)可能更具优势.
-其三, 该算法对 Hessian 矩阵条件数表现出良好的鲁棒性.
+数值实验验证了手写积极集算法的正确性与效率.
+其一,  笔者所写代码的计算结果与 OSQP 求解器的目标函数值差异均在 $10^{-3}$ 量级以下, 表明算法实现正确.
+其二,  积极集算法更适合 $n \gg m$ 的问题;当约束数量 $m$ 接近或超过变量维度 $n$ 时, 一阶方法(如 OSQP)可能更具优势.
+其三,  该算法对 Hessian 矩阵条件数表现出良好的鲁棒性.
 
 \section{第三题}
-
+本章内容的实现代码在\texttt{Stiefel\_Opt.py}文件里的\texttt{Q3}函数中.
 \subsection{问题描述}
-本题要求使用L-BFGS 算法在 Stiefel 流形 $\mathcal{M} = \mathrm{St}(n, p) = \{X \in \mathbb{R}^{n \times p} \mid X^\top X = I_p\}$ 上求解二次函数的最小化问题,并进行相关性能评估,包括代码运行时间、迭代次数、最优解处梯度的范数,最优解目标函数值.目标函数定义如下:
+本题要求使用L-BFGS 算法在 Stiefel 流形 $\mathcal{M} = \mathrm{St}(n,  p) = \{X \in \mathbb{R}^{n \times p} \mid X^\top X = I_p\}$ 上求解二次函数的最小化问题, 并进行相关性能评估, 包括代码运行时间、迭代次数、最优解处梯度的范数, 最优解目标函数值.目标函数定义如下:
 \begin{equation}
-    \min_{X \in \mathrm{St}(n, p)} f(X) = \mathrm{Tr}(X^\top A X) + 2\mathrm{Tr}(B^\top X),
+    \min_{X \in \mathrm{St}(n,  p)} f(X) = \mathrm{Tr}(X^\top A X) + 2\mathrm{Tr}(B^\top X), 
     \label{eq:prob_def}
 \end{equation}
-其中 $A \in \mathbb{R}^{n \times n}$ 为对称矩阵,$B \in \mathbb{R}^{n \times p}$ 为任意矩阵.
+其中 $A \in \mathbb{R}^{n \times n}$ 为对称矩阵, $B \in \mathbb{R}^{n \times p}$ 为任意矩阵.
 
 \subsection{流形上的L-BFGS 算法描述}
-流形上的L-BFGS 算法通过利用最近 $m$ 步的曲率信息 $\{s_k, y_k\}$ 来近似 Hessian 的逆算子,从而避免了显式计算 Hessian 矩阵.与欧氏空间不同,流形上的 $s_k$ 和 $y_k$ 位于不同的切空间,需要利用向量传输或隐式近似处理.
+流形上的L-BFGS 算法通过利用最近 $m$ 步的曲率信息 $\{s_k,  y_k\}$ 来近似 Hessian 的逆算子, 从而避免了显式计算 Hessian 矩阵.与欧氏空间不同, 流形上的 $s_k$ 和 $y_k$ 位于不同的切空间, 需要利用向量传输或隐式近似处理.
 
 \subsubsection{算法流程}
-算法的伪代码如算法\ref{alg:rlbfgs}所示,其核心步骤如下:
+算法的伪代码如算法\ref{alg:rlbfgs}所示, 其核心步骤如下:
 
-\textbf{Step1 初始化}:选择初始点 $X_0 \in \mathrm{St}(n, p)$,设定内存大小 $m$.
+\textbf{Step1 初始化}:选择初始点 $X_0 \in \mathrm{St}(n,  p)$, 设定内存大小 $m$.
 
-\textbf{Step2 计算搜索方向}:在第 $k$ 步,计算黎曼梯度 $g_k = \mathrm{grad} f(X_k)$.利用双循环递归算法,结合存储的对 $(s_i, y_i)$,计算下降方向 $d_k = -H_k g_k$.
+\textbf{Step2 计算搜索方向}:在第 $k$ 步, 计算黎曼梯度 $g_k = \mathrm{grad} f(X_k)$.利用双循环递归算法, 结合存储的对 $(s_i,  y_i)$, 计算下降方向 $d_k = -H_k g_k$.
 
-\textbf{Step3 线搜索}:采用 Armijo 准则确定步长 $\alpha_k$,使得
+\textbf{Step3 线搜索}:采用 Armijo 准则确定步长 $\alpha_k$, 使得
     \begin{equation}
-        f(R_{X_k}(\alpha_k d_k)) \le f(X_k) + c_1 \alpha_k \langle g_k, d_k \rangle.
+        f(R_{X_k}(\alpha_k d_k)) \le f(X_k) + c_1 \alpha_k \langle g_k,  d_k \rangle.
     \end{equation}
 
 \textbf{Step4 更新迭代点}:令 $X_{k+1} = R_{X_k}(\alpha_k d_k)$.
 
 
-\textbf{Step5 曲率信息更新}:计算位移 $s_k$ 和梯度差 $y_k$.由于 $g_k \in T_{X_k}\mathcal{M}$ 而 $g_{k+1} \in T_{X_{k+1}}\mathcal{M}$,在实际代码实现中,我们通过将切向量视为环境空间 $\mathbb{R}^{n \times p}$ 中的矩阵进行近似计算:
+\textbf{Step5 曲率信息更新}:计算位移 $s_k$ 和梯度差 $y_k$.由于 $g_k \in T_{X_k}\mathcal{M}$ 而 $g_{k+1} \in T_{X_{k+1}}\mathcal{M}$, 在实际代码实现中, 我们通过将切向量视为环境空间 $\mathbb{R}^{n \times p}$ 中的矩阵进行近似计算:
     \begin{equation}
-        s_k = X_{k+1} - X_k, \quad y_k = g_{k+1} - g_k.
+        s_k = X_{k+1} - X_k,  \quad y_k = g_{k+1} - g_k.
     \end{equation}
-    若满足曲率条件 $\langle s_k, y_k \rangle > 0$,则将 $(s_k, y_k)$ 存入内存,移除最旧的一对.
+    若满足曲率条件 $\langle s_k,  y_k \rangle > 0$, 则将 $(s_k,  y_k)$ 存入内存, 移除最旧的一对.
 
-\begin{algorithm}[H]
+\begin{algorithm}[htbp]
 \caption{黎曼 L-BFGS 算法 (含阻尼更新策略)}
 \label{alg:rlbfgs}
 \begin{algorithmic}[1]
-\Require 初始点 $X_0 \in St(n,p)$,内存大小 $m$,阻尼参数 $\delta$ (默认 1.0)
-\State $k \gets 0$, 初始化存储对列表 $\mathcal{M} = \emptyset$
+\Require 初始点 $X_0 \in St(n, p)$, 内存大小 $m$, 阻尼参数 $\delta$ (默认 1.0)
+\State $k \gets 0$,  初始化存储对列表 $\mathcal{M} = \emptyset$
 \While{$\|\text{grad} f(X_k)\| > \epsilon$}
     \State 计算黎曼梯度:$\xi_k = \text{grad} f(X_k)$
     
     \State \textbf{1. 双循环递归 (Two-Loop Recursion) 计算方向 $d_k$:}
     \State $q \gets \xi_k$
-    \For{$i = |\mathcal{M}|-1$ \textbf{to} $0$} \Comment{Backward Pass}
-        \State $(s_i, y_i, \rho_i) \gets \mathcal{M}[i]$
-        \State $\alpha_i \gets \rho_i \langle s_i, q \rangle$
+    \For{$i = |\mathcal{M}|-1$ \textbf{to} $0$} \Comment{反向传递}
+        \State $(s_i,  y_i,  \rho_i) \gets \mathcal{M}[i]$
+        \State $\alpha_i \gets \rho_i \langle s_i,  q \rangle$
         \State $q \gets q - \alpha_i y_i$
     \EndFor
-    \State $\gamma_k \gets \frac{\langle s_{last}, y_{last} \rangle}{\langle y_{last}, y_{last} \rangle}$ \Comment{Scaling}
+    \State $\gamma_k \gets \frac{\langle s_{last},  y_{last} \rangle}{\langle y_{last},  y_{last} \rangle}$ \Comment{缩放}
     \State $r \gets \gamma_k q$
-    \For{$i = 0$ \textbf{to} $|\mathcal{M}|-1$} \Comment{Forward Pass}
-        \State $(s_i, y_i, \rho_i) \gets \mathcal{M}[i]$
-        \State $\beta \gets \rho_i \langle y_i, r \rangle$
+    \For{$i = 0$ \textbf{to} $|\mathcal{M}|-1$} \Comment{正向传递}
+        \State $(s_i,  y_i,  \rho_i) \gets \mathcal{M}[i]$
+        \State $\beta \gets \rho_i \langle y_i,  r \rangle$
         \State $r \gets r + s_i (\alpha_i - \beta)$
     \EndFor
     \State $d_k \gets -r$
@@ -497,83 +681,83 @@ $1e+04$ & 0.0243$\pm$0.0040 & 54 & 0.0186$\pm$0.0022 & -- & 1.66e-03 & 0.77 \\
     \State 获取步长 $t_k$ 并更新 $X_{k+1} = R_{X_k}(t_k d_k)$
     
     \State \textbf{3. 阻尼更新 (Damped Update):}
-    \State 计算位移与梯度差(欧氏近似):$s_k = X_{k+1} - X_k, \quad y_k = \text{grad} f(X_{k+1}) - \xi_k$
-    \State 计算投影曲率:$sy = \langle s_k, y_k \rangle, \quad ss = \delta \langle s_k, s_k \rangle$
+    \State 计算位移与梯度差(欧氏近似):$s_k = X_{k+1} - X_k,  \quad y_k = \text{grad} f(X_{k+1}) - \xi_k$
+    \State 计算投影曲率:$sy = \langle s_k,  y_k \rangle,  \quad ss = \delta \langle s_k,  s_k \rangle$
     \If{$sy < 0.25 ss$} \Comment{阻尼条件判断}
         \State $\theta = \frac{0.75 ss}{ss - sy}$
         \State $r_k = \theta y_k + (1-\theta) \delta s_k$ \Comment{修正梯度差}
     \Else
         \State $r_k = y_k$
     \EndIf
-    \State 若 $\langle s_k, r_k \rangle > 10^{-10}$,将 $(s_k, r_k, 1/\langle s_k, r_k \rangle)$ 存入 $\mathcal{M}$ (若满则移除最旧)
+    \State 若 $\langle s_k,  r_k \rangle > 10^{-10}$, 将 $(s_k,  r_k,  1/\langle s_k,  r_k \rangle)$ 存入 $\mathcal{M}$ (若满则移除最旧)
     
     \State $k \gets k + 1$
 \EndWhile
 \end{algorithmic}
 \end{algorithm}
 
-在黎曼流形 $\mathcal{M}$ 上的拟牛顿法中,为了提高算法在非凸问题上的鲁棒性以及在大规模问题上的计算效率,常采用阻尼技术和子空间技术.以下分别对这两种方法进行总结.
+在黎曼流形 $\mathcal{M}$ 上的拟牛顿法中, 为了提高算法在非凸问题上的鲁棒性以及在大规模问题上的计算效率, 常采用阻尼技术和子空间技术.以下分别对这两种方法进行总结.
 
 \subsection{阻尼 L-BFGS 更新}
 
-在拟牛顿法中,为保证拟牛顿矩阵 $B_{k+1}$(或其逆 $H_{k+1}$)的正定性,必须满足曲率条件 $s_k^{\mathrm{T}} y_k > 0$,其中 $s_k$ 为位移向量,$y_k$ 为梯度差向量.然而,当步长由非精确线搜索确定时,该条件可能不成立.为此,采用阻尼技术对梯度差向量进行修正.
+在拟牛顿法中, 为保证拟牛顿矩阵 $B_{k+1}$(或其逆 $H_{k+1}$)的正定性, 必须满足曲率条件 $s_k^{\mathrm{T}} y_k > 0$, 其中 $s_k$ 为位移向量, $y_k$ 为梯度差向量.然而, 当步长由非精确线搜索确定时, 该条件可能不成立.为此, 采用阻尼技术对梯度差向量进行修正.
 
-类似讲义对欧氏空间中阻尼L-BFGS方法的描述, 给定对称正定矩阵 $B_k$、位移向量 $s_k$ 和梯度差 $y_k$,我们构造修正向量 $r_k$ 来代替 $y_k$:
+类似讲义对欧氏空间中阻尼L-BFGS方法的描述,  给定对称正定矩阵 $B_k$、位移向量 $s_k$ 和梯度差 $y_k$, 我们构造修正向量 $r_k$ 来代替 $y_k$:
 \begin{equation}
-    r_k = \theta_k y_k + (1 - \theta_k) B_k s_k,
+    r_k = \theta_k y_k + (1 - \theta_k) B_k s_k, 
 \end{equation}
-其中 $\theta_k \in [0, 1]$ 是确保 $B_{k+1}$ 保持正定的参数,定义如下:
+其中 $\theta_k \in [0,  1]$ 是确保 $B_{k+1}$ 保持正定的参数, 定义如下:
 \begin{equation}
     \theta_k = 
     \begin{cases}
-    1, & \text{若 } s_k^{\mathrm{T}} y_k \ge 0.25 s_k^{\mathrm{T}} B_k s_k, \\
-    \frac{0.75 s_k^{\mathrm{T}} B_k s_k}{s_k^{\mathrm{T}} B_k s_k - s_k^{\mathrm{T}} y_k}, & \text{若 } s_k^{\mathrm{T}} y_k < 0.25 s_k^{\mathrm{T}} B_k s_k.
+    1,  & \text{若 } s_k^{\mathrm{T}} y_k \ge 0.25 s_k^{\mathrm{T}} B_k s_k,  \\
+    \frac{0.75 s_k^{\mathrm{T}} B_k s_k}{s_k^{\mathrm{T}} B_k s_k - s_k^{\mathrm{T}} y_k},  & \text{若 } s_k^{\mathrm{T}} y_k < 0.25 s_k^{\mathrm{T}} B_k s_k.
     \end{cases}
 \end{equation}
-该构造保证了 $s_k^{\mathrm{T}} r_k \ge 0.25 s_k^{\mathrm{T}} B_k s_k > 0$,即修正后的曲率条件严格成立.在实际的 L-BFGS 算法中,通常取 $B_k$ 为初始近似矩阵(如 $B_{k,0} = \delta I$).利用修正后的对 $(s_k, r_k)$ 执行标准的 BFGS 更新公式:
+该构造保证了 $s_k^{\mathrm{T}} r_k \ge 0.25 s_k^{\mathrm{T}} B_k s_k > 0$, 即修正后的曲率条件严格成立.在实际的 L-BFGS 算法中, 通常取 $B_k$ 为初始近似矩阵(如 $B_{k, 0} = \delta I$).利用修正后的对 $(s_k,  r_k)$ 执行标准的 BFGS 更新公式:
 \begin{equation}
     B_{k+1} = B_k - \frac{B_k s_k s_k^{\mathrm{T}} B_k}{s_k^{\mathrm{T}} B_k s_k} + \frac{r_k r_k^{\mathrm{T}}}{s_k^{\mathrm{T}} r_k}.
 \end{equation}
-此方法能够有效防止拟牛顿矩阵在非凸区域失去正定性,从而增强算法的稳定性.具体的算法流程如 算法 \ref{alg:rlbfgs} 所示,其核心是利用双循环递归高效计算搜索方向 $d_k = -H_k g_k$.
+此方法能够有效防止拟牛顿矩阵在非凸区域失去正定性, 从而增强算法的稳定性.具体的算法流程如 算法 \ref{alg:rlbfgs} 所示, 其核心是利用双循环递归高效计算搜索方向 $d_k = -H_k g_k$.
 
 \subsection{子空间L-BFGS方法}
 
-注意, 笔者尝试将子空间方法和形上的L-BFGS方法结合起来, 代码中实现了这部分的算法, 由于时间关系, 来不及验证其正确性与优化代码, 故这里仅简要介绍笔者的思路.
+注意,  笔者尝试将子空间方法和形上的L-BFGS方法结合起来,  代码中实现了这部分的算法,  由于时间关系,  来不及验证其正确性与优化代码,  故这里仅简要介绍笔者的思路.
 
-在大规模问题中,存储和更新全维拟牛顿矩阵代价过高.讲义 \textbf{§5.2.2} 介绍了子空间方法.其核心思想是将优化限制在由历史梯度张成的低维 Krylov 子空间 $G_k = \text{span}\{g_0, \dots, g_k\}$ 中.
+在大规模问题中, 存储和更新全维拟牛顿矩阵代价过高.讲义 \textbf{§5.2.2} 介绍了子空间方法.其核心思想是将优化限制在由历史梯度张成的低维 Krylov 子空间 $G_k = \text{span}\{g_0,  \dots,  g_k\}$ 中.
 
-根据讲义 \textbf{定理 5.2.7 (第 156 页)},如果我们维护子空间的一组正交基 $Z_k$,并定义投影梯度 $\bar{g}_k = Z_k^T g_k$ 和投影拟牛顿矩阵 $\bar{H}_k = Z_k^T H_k Z_k$,那么在低维空间直接对 $\bar{H}_k$ 进行 BFGS 更新,在理论上等价于在全空间更新 $H_k$ 后再投影.这为算法的高效实现提供了理论依据.
+根据讲义 \textbf{定理 5.2.7 (第 156 页)}, 如果我们维护子空间的一组正交基 $Z_k$, 并定义投影梯度 $\bar{g}_k = Z_k^T g_k$ 和投影拟牛顿矩阵 $\bar{H}_k = Z_k^T H_k Z_k$, 那么在低维空间直接对 $\bar{H}_k$ 进行 BFGS 更新, 在理论上等价于在全空间更新 $H_k$ 后再投影.这为算法的高效实现提供了理论依据.
 
-定义梯度向量 $g_0, \cdots, g_k$ 张成的线性子空间为:
+定义梯度向量 $g_0,  \cdots,  g_k$ 张成的线性子空间为:
 \begin{equation}
-    G_k = \mathrm{span}\{g_0, \cdots, g_k\}, \quad \forall k \ge 0.
+    G_k = \mathrm{span}\{g_0,  \cdots,  g_k\},  \quad \forall k \ge 0.
 \end{equation}
-设 $l_k$ 为子空间 $G_k$ 的维数.令 $Z_k \in \mathbb{R}^{n \times l_k}$ 为 $G_k$ 的一组单位正交基,即 $Z_k^{\mathrm{T}} Z_k = I_{l_k}$.将梯度 $g_k$ 和拟牛顿矩阵 $H_k$ 投影到子空间,定义:
+设 $l_k$ 为子空间 $G_k$ 的维数.令 $Z_k \in \mathbb{R}^{n \times l_k}$ 为 $G_k$ 的一组单位正交基, 即 $Z_k^{\mathrm{T}} Z_k = I_{l_k}$.将梯度 $g_k$ 和拟牛顿矩阵 $H_k$ 投影到子空间, 定义:
 \begin{equation}
-    \bar{g}_k = Z_k^{\mathrm{T}} g_k \in \mathbb{R}^{l_k}, \quad \bar{H}_k = Z_k^{\mathrm{T}} H_k Z_k \in \mathbb{R}^{l_k \times l_k}.
+    \bar{g}_k = Z_k^{\mathrm{T}} g_k \in \mathbb{R}^{l_k},  \quad \bar{H}_k = Z_k^{\mathrm{T}} H_k Z_k \in \mathbb{R}^{l_k \times l_k}.
 \end{equation}
-在此框架下,搜索方向 $p_k = -H_k g_k$ 可以通过低维计算得到:
+在此框架下, 搜索方向 $p_k = -H_k g_k$ 可以通过低维计算得到:
 \begin{equation}
     H_k g_k = Z_k \bar{H}_k \bar{g}_k.
 \end{equation}
-这意味着迭代公式可以写为 $x_{k+1} = x_k - \alpha_k Z_k \bar{H}_k \bar{g}_k$.当 $l_k \ll n$ 时,更新 $\bar{H}_k$ 的计算量远小于更新 $H_k$.
+这意味着迭代公式可以写为 $x_{k+1} = x_k - \alpha_k Z_k \bar{H}_k \bar{g}_k$.当 $l_k \ll n$ 时, 更新 $\bar{H}_k$ 的计算量远小于更新 $H_k$.
 
 算法的关键在于从 $\bar{H}_k$ 递推得到 $\bar{H}_{k+1}$.通过引入辅助向量 $\phi_{k+1}$ 和 $u_{k+1}$:
 \begin{equation}
-    \phi_{k+1} = \|(I - Z_k Z_k^{\mathrm{T}}) g_{k+1}\|, \quad u_k = Z_k^{\mathrm{T}} g_{k+1}.
+    \phi_{k+1} = \|(I - Z_k Z_k^{\mathrm{T}}) g_{k+1}\|,  \quad u_k = Z_k^{\mathrm{T}} g_{k+1}.
 \end{equation}
-如果 $\phi_{k+1} > 0$,则扩展基矩阵 $Z_{k+1} = [Z_k, z_{k+1}]$,其中 $z_{k+1} = (g_{k+1} - Z_k u_k) / \phi_{k+1}$.此时,低维矩阵 $\bar{H}_{k+1}$ 可通过如下分块矩阵的 BFGS 更新得到:
+如果 $\phi_{k+1} > 0$, 则扩展基矩阵 $Z_{k+1} = [Z_k,  z_{k+1}]$, 其中 $z_{k+1} = (g_{k+1} - Z_k u_k) / \phi_{k+1}$.此时, 低维矩阵 $\bar{H}_{k+1}$ 可通过如下分块矩阵的 BFGS 更新得到:
 \begin{equation}
-    \bar{H}_{k+1} = \left(I - \tilde{\rho}_k \tilde{s}_k \tilde{y}_k^{\mathrm{T}}\right) \tilde{H}_k \left(I - \tilde{\rho}_k \tilde{y}_k \tilde{s}_k^{\mathrm{T}}\right) + \tilde{\rho}_k \tilde{s}_k \tilde{s}_k^{\mathrm{T}},
+    \bar{H}_{k+1} = \left(I - \tilde{\rho}_k \tilde{s}_k \tilde{y}_k^{\mathrm{T}}\right) \tilde{H}_k \left(I - \tilde{\rho}_k \tilde{y}_k \tilde{s}_k^{\mathrm{T}}\right) + \tilde{\rho}_k \tilde{s}_k \tilde{s}_k^{\mathrm{T}}, 
 \end{equation}
-其中 $\tilde{s}_k, \tilde{y}_k$ 分别是 $s_k, y_k$ 在扩展子空间上的投影,$\tilde{H}_k$ 是 $\bar{H}_k$ 的扩展矩阵.为了控制计算成本,通常采用周期性重启策略或限制子空间维数(类似于 L-BFGS 的显式截断).具体流程详见算法\ref{alg:subspace_lbfgs}.
+其中 $\tilde{s}_k,  \tilde{y}_k$ 分别是 $s_k,  y_k$ 在扩展子空间上的投影, $\tilde{H}_k$ 是 $\bar{H}_k$ 的扩展矩阵.为了控制计算成本, 通常采用周期性重启策略或限制子空间维数(类似于 L-BFGS 的显式截断).具体流程详见算法\ref{alg:subspace_lbfgs}.
 
 \begin{algorithm}[H]
 \caption{子空间 L-BFGS 算法}
 \label{alg:subspace_lbfgs}
 \begin{algorithmic}[1]
 \Require 最大子空间维数 $dim_{\max}$
-\State 初始化:$Z = [\xi_0 / \|\xi_0\|]$ (基矩阵), $H_{sub} = [1]$ (子空间逆 Hessian), $dim=1$
+\State 初始化:$Z = [\xi_0 / \|\xi_0\|]$ (基矩阵),  $H_{sub} = [1]$ (子空间逆 Hessian),  $dim=1$
 \While{未收敛}
     \State \textbf{1. 子空间投影求方向:}
     \State 将梯度投影到子空间:$g_{sub} = Z^T \text{grad} f(X_k)$
@@ -582,22 +766,22 @@ $1e+04$ & 0.0243$\pm$0.0040 & 54 & 0.0186$\pm$0.0022 & -- & 1.66e-03 & 0.77 \\
     
     \State \textbf{2. 更新迭代点:}
     \State $X_{k+1} = R_{X_k}(t_k d_k)$
-    \State 计算 $s_k = X_{k+1} - X_k, \quad y_k = \text{grad} f(X_{k+1}) - \text{grad} f(X_k)$
+    \State 计算 $s_k = X_{k+1} - X_k,  \quad y_k = \text{grad} f(X_{k+1}) - \text{grad} f(X_k)$
     
     \State \textbf{3. 扩展子空间基 $Z$:}
     \State 计算 $g_{next} = y_k + \text{grad} f(X_k)$ (利用梯度递推关系)
     \State 正交化:$u = g_{next} - Z (Z^T g_{next})$
     \If{$\|u\| > \epsilon$ \textbf{and} $dim < dim_{\max}$}
-        \State $Z \gets [Z, u/\|u\|]$, $dim \gets dim + 1$
-        \State 扩展 $H_{sub}$:$H_{sub} \gets \text{diag}(H_{sub}, 1)$
+        \State $Z \gets [Z,  u/\|u\|]$,  $dim \gets dim + 1$
+        \State 扩展 $H_{sub}$:$H_{sub} \gets \text{diag}(H_{sub},  1)$
     \Else
-        \State 若已达最大维数,重置子空间
+        \State 若已达最大维数, 重置子空间
     \EndIf
     
     \State \textbf{4. 更新子空间矩阵 $H_{sub}$:}
-    \State 投影 $s, y$:$\bar{s} = Z^T s_k, \quad \bar{y} = Z^T y_k$
+    \State 投影 $s,  y$:$\bar{s} = Z^T s_k,  \quad \bar{y} = Z^T y_k$
     \State 使用 BFGS 公式更新 $H_{sub}$:
-    $$ H_{sub} \gets (I - \rho \bar{s}\bar{y}^T) H_{sub} (I - \rho \bar{y}\bar{s}^T) + \rho \bar{s}\bar{s}^T $$
+    $$ H_{sub} \gets (I - \rho \bar{s}\bar{y}^T) H_{sub} (I - \rho \bar{y}\bar{s}^T) + \rho \bar{s}\bar{s}^T. $$
 \EndWhile
 \end{algorithmic}
 \end{algorithm}
@@ -606,49 +790,49 @@ $1e+04$ & 0.0243$\pm$0.0040 & 54 & 0.0186$\pm$0.0022 & -- & 1.66e-03 & 0.77 \\
 
 \subsubsection{实验设置}
 
-为了评估黎曼 L-BFGS 及阻尼 L-BFGS在 Stiefel 流形上的性能，我们构建了如下的二次规划测试问题：
+为了评估黎曼 L-BFGS 及阻尼 L-BFGS在 Stiefel 流形上的性能, 我们构建了如下的二次规划测试问题:
 \begin{equation}
-    \min_{X \in St(n, p)} f(X) = \mathrm{Tr}(X^T A X) + 2\mathrm{Tr}(B^T X)
+    \min_{X \in St(n,  p)} f(X) = \mathrm{Tr}(X^T A X) + 2\mathrm{Tr}(B^T X), 
 \end{equation}
-其中 $A \in \mathbb{R}^{n \times n}$ 为生成的对称矩阵，$B \in \mathbb{R}^{n \times p}$ 为全零矩阵（主要考察二次项性质）。
+其中 $A \in \mathbb{R}^{n \times n}$ 为生成的对称矩阵, $B \in \mathbb{R}^{n \times p}$ 为全零矩阵(主要考察二次项性质).
 
-参数设置如下：
+参数设置如下:
 \begin{itemize}
-    \item \textbf{算法对比}：标准黎曼 L-BFGS 与 阻尼黎曼 L-BFGS (以下简称为Damped, $\delta=20.0$)。
-    \item \textbf{存储对数}：$m=10$。
-    \item \textbf{终止条件}：梯度范数 $\|\mathrm{grad} f(X_k)\| < 10^{-6}$ 或达到最大迭代次数 1000。
-    \item \textbf{线搜索}：采用 Zhang-Hager 非单调线搜索 ($\rho=0.5$)。
-    \item \textbf{实验环境}：AMD Ryzen 5 5500U, 16GB RAM, Python 3.11。
+    \item \textbf{算法对比}:标准黎曼 L-BFGS 与 阻尼黎曼 L-BFGS (以下简称为Damped,  $\delta=20.0$).
+    \item \textbf{存储对数}:$m=10$.
+    \item \textbf{终止条件}:梯度范数 $\|\mathrm{grad} f(X_k)\| < 10^{-6}$ 或达到最大迭代次数 1000.
+    \item \textbf{线搜索}:采用 Zhang-Hager 非单调线搜索 ($\rho=0.5$).
+    \item \textbf{实验环境}:AMD Ryzen 5 5500U,  16GB RAM,  Python 3.11.
 \end{itemize}
 
-实验分为两组，分别考察矩阵规模 $n$ 和流形列数 $p$ 对算法性能的影响。
+实验分为两组, 分别考察矩阵规模 $n$ 和流形列数 $p$ 对算法性能的影响.
 
 \subsubsection{结果分析}
 
 \textbf{1. 列数 $p$ 变化的影响 (固定 $n=2000$)}
 
-表 \ref{tab:Q3Fixed_n} 展示了当 $n$ 固定为 2000，列数 $p$ 从 10 增加到 200 时算法的表现。
+表 \ref{tab:Q3Fixed_n} 展示了当 $n$ 固定为 2000, 列数 $p$ 从 10 增加到 200 时算法的表现.
 
 \begin{table}[H]
     \centering
-    \caption{固定 $n=2000$，不同 $p$ 值下的算法性能对比}
+    \caption{固定 $n=2000$, 不同 $p$ 值下的算法性能对比}
     \begin{tabular}{cccccc}
         \toprule
-        \textbf{维度} $(n, p)$ & \textbf{方法} & \textbf{总时间 (s)} & \textbf{迭代次数} & \textbf{单步时间 (s)} & \textbf{最终} $\|\nabla f\|$ \\
+        \textbf{维度} $(n,  p)$ & \textbf{方法} & \textbf{总时间 (s)} & \textbf{迭代次数} & \textbf{单步时间 (s)} & \textbf{最终} $\|\nabla f\|$ \\
         \midrule
-        \multirow{2}{*}{$(2000, 10)$} 
+        \multirow{2}{*}{$(2000,  10)$} 
         & L-BFGS & 8.0898 & 1000 & 0.0081 & 8.77e-06 \\
         & Damped & 8.8346 & 741 & 0.0119 & 1.04e-06 \\
         \cmidrule{1-6}
-        \multirow{2}{*}{$(2000, 50)$} 
+        \multirow{2}{*}{$(2000,  50)$} 
         & L-BFGS & 30.7671 & 717 & 0.0429 & 8.41e-06 \\
         & Damped & 27.3751 & 545 & 0.0502 & 1.88e-05 \\
         \cmidrule{1-6}
-        \multirow{2}{*}{$(2000, 100)$} 
+        \multirow{2}{*}{$(2000,  100)$} 
         & L-BFGS & 49.0515 & 404 & 0.1214 & 1.20e-05 \\
         & Damped & 39.4684 & 467 & 0.0845 & 3.31e-05 \\
         \cmidrule{1-6}
-        \multirow{2}{*}{$(2000, 200)$} 
+        \multirow{2}{*}{$(2000,  200)$} 
         & L-BFGS & 136.8057 & 717 & 0.1908 & 4.11e-05 \\
         & Damped & 115.5013 & 692 & 0.1669 & 1.04e-05 \\
         \bottomrule
@@ -656,38 +840,38 @@ $1e+04$ & 0.0243$\pm$0.0040 & 54 & 0.0186$\pm$0.0022 & -- & 1.66e-03 & 0.77 \\
     \label{tab:Q3Fixed_n}
 \end{table}
 
-从表 \ref{tab:Q3Fixed_n} 可以观察到：
+从表 \ref{tab:Q3Fixed_n} 可以观察到:
 
-(1) 计算成本随 $p$ 增加： 随着 $p$ 的增大，单步迭代时间显著增加。这是因为流形上的收缩映射（SVD分解）以及梯度计算的复杂度主要与 $np^2$ 或 $n^2p$ 相关。
+(1) 计算成本随 $p$ 增加: 随着 $p$ 的增大, 单步迭代时间显著增加.这是因为流形上的收缩映射(SVD分解)以及梯度计算的复杂度主要与 $np^2$ 或 $n^2p$ 相关.
 
-(2) 阻尼策略的优势： 在 $p=50, 100, 200$ 的较大规模问题中，阻尼 L-BFGS 的总运行时间均优于标准 L-BFGS。特别是在 $(2000, 200)$ 的情况下，阻尼方法节省了约 15\% 的时间。
+(2) 阻尼策略的优势: 在 $p=50,  100,  200$ 的较大规模问题中, 阻尼 L-BFGS 的总运行时间均优于标准 L-BFGS.特别是在 $(2000,  200)$ 的情况下, 阻尼方法节省了约 15\% 的时间.
 
-(3) 鲁棒性： 在 $p=10$ 时，标准 L-BFGS 达到最大迭代次数 1000 仍未完全收敛至 $10^{-6}$ 精度（最终梯度 $8.77\text{e-}6$），而阻尼方法在 741 步收敛。这表明在非凸的 Stiefel 流形上，阻尼更新通过强制保证曲率条件 $s_k^T y_k > 0$，有效地避免了拟牛顿矩阵的不正定问题，从而生成了质量更高的搜索方向。
+(3) 鲁棒性: 在 $p=10$ 时, 标准 L-BFGS 达到最大迭代次数 1000 仍未完全收敛至 $10^{-6}$ 精度(最终梯度 $8.77\text{e-}6$), 而阻尼方法在 741 步收敛.这表明在非凸的 Stiefel 流形上, 阻尼更新通过强制保证曲率条件 $s_k^T y_k > 0$, 有效地避免了拟牛顿矩阵的不正定问题, 从而生成了质量更高的搜索方向.
 
 \textbf{2. 维度 $n$ 变化的影响 (固定 $p=10$)}
 
-表 \ref{tab:Q3Fixed_p} 展示了当 $p$ 固定为 10，行数 $n$ 从 1000 增加到 6000 时算法的表现。
+表 \ref{tab:Q3Fixed_p} 展示了当 $p$ 固定为 10, 行数 $n$ 从 1000 增加到 6000 时算法的表现.
 
 \begin{table}[H]
     \centering
-    \caption{固定 $p=10$，不同 $n$ 值下的算法性能对比}
+    \caption{固定 $p=10$, 不同 $n$ 值下的算法性能对比}
     \begin{tabular}{cccccc}
         \toprule
-        \textbf{维度} $(n, p)$ & \textbf{方法} & \textbf{总时间 (s)} & \textbf{迭代次数} & \textbf{单步时间 (s)} & \textbf{最终} $\|\nabla f\|$ \\
+        \textbf{维度} $(n,  p)$ & \textbf{方法} & \textbf{总时间 (s)} & \textbf{迭代次数} & \textbf{单步时间 (s)} & \textbf{最终} $\|\nabla f\|$ \\
         \midrule
-        \multirow{2}{*}{$(1000, 10)$} 
+        \multirow{2}{*}{$(1000,  10)$} 
         & L-BFGS & 3.2421 & 1000 & 0.0032 & 2.97e-06 \\
         & Damped & 2.2308 & 666 & 0.0034 & 4.77e-06 \\
         \cmidrule{1-6}
-        \multirow{2}{*}{$(2000, 10)$} 
+        \multirow{2}{*}{$(2000,  10)$} 
         & L-BFGS & 6.9859 & 1000 & 0.0070 & 8.77e-06 \\
         & Damped & 8.5661 & 741 & 0.0116 & 1.04e-06 \\
         \cmidrule{1-6}
-        \multirow{2}{*}{$(4000, 10)$} 
+        \multirow{2}{*}{$(4000,  10)$} 
         & L-BFGS & 25.2620 & 1000 & 0.0253 & 1.07e-05 \\
         & Damped & 30.9647 & 837 & 0.0370 & 8.23e-06 \\
         \cmidrule{1-6}
-        \multirow{2}{*}{$(6000, 10)$} 
+        \multirow{2}{*}{$(6000,  10)$} 
         & L-BFGS & 94.7619 & 791 & 0.1198 & 3.13e-06 \\
         & Damped & 52.9006 & 470 & 0.1126 & 1.92e-05 \\
         \bottomrule
@@ -695,62 +879,410 @@ $1e+04$ & 0.0243$\pm$0.0040 & 54 & 0.0186$\pm$0.0022 & -- & 1.66e-03 & 0.77 \\
     \label{tab:Q3Fixed_p}
 \end{table}
 
-从表 \ref{tab:Q3Fixed_p} 可以观察到：
+从表 \ref{tab:Q3Fixed_p} 可以观察到:
 
-(1) 在 $(6000, 10)$ 组别中，阻尼 L-BFGS 的总时间（52.9s）显著低于标准 L-BFGS（94.8s）。这说明随着问题规模 $n$ 的增大，目标函数的曲率变化可能更加复杂，标准 L-BFGS 容易因为曲率信息不准确而导致步长过小或方向偏差，而阻尼技术有效地修正了这一问题。
+(1) 在 $(6000,  10)$ 组别中, 阻尼 L-BFGS 的总时间(52.9s)显著低于标准 L-BFGS(94.8s).这说明随着问题规模 $n$ 的增大, 目标函数的曲率变化可能更加复杂, 标准 L-BFGS 容易因为曲率信息不准确而导致步长过小或方向偏差, 而阻尼技术有效地修正了这一问题.
 
-(2) 虽然阻尼更新引入了额外的向量内积和标量计算（见算法 4 中的 $\theta$ 计算），导致单步时间略微增加（例如 $n=2000$ 时，0.0116s vs 0.0070s），但其带来的收敛步数的减少足以抵消这一开销，最终在总时间上获得优势。
+(2) 虽然阻尼更新引入了额外的向量内积和标量计算(见算法 4 中的 $\theta$ 计算), 导致单步时间略微增加(例如 $n=2000$ 时, 0.0116s vs 0.0070s), 但其带来的收敛步数的减少足以抵消这一开销, 最终在总时间上获得优势.
 
 \textbf{3. 收敛曲线分析}
 
-图 \ref{fig:Q3convergence_curves_gradnorm} 展示了梯度范数随迭代次数下降的曲线, 图 \ref{fig:Q3convergence_curves_cost} 展示了目标函数值随迭代次数下降的曲线.
+图 \ref{fig:Q3convergence_curves_gradnorm} 展示了梯度范数随迭代次数下降的曲线,  图 \ref{fig:Q3convergence_curves_cost} 展示了目标函数值随迭代次数下降的曲线.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
-    \begin{subfigure}[b]{0.48\textwidth}
+    \begin{subfigure}[b]{0.8\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/Q3Fixed_n_gradnorm.png} % 请确保图片文件名与代码生成一致
-        \caption{固定 $n=2000$，不同 $p$ 值}
+        \caption{固定 $n=2000$, 不同 $p$ 值}
         \label{fig:Q3fixed_n_gradnorm}
     \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
+    
+    \vspace{0.5cm}
+    
+    \begin{subfigure}[b]{0.8\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/Q3Fixed_p_gradnorm.png} % 请确保图片文件名与代码生成一致
-        \caption{固定 $p=10$，不同 $n$ 值}
+        \caption{固定 $p=10$, 不同 $n$ 值}
         \label{fig:Q3fixed_p_gradnorm}
     \end{subfigure}
     \caption{标准 L-BFGS 与阻尼 L-BFGS 的梯度范数收敛曲线对比}
     \label{fig:Q3convergence_curves_gradnorm}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[htbp]
    \centering
-    \begin{subfigure}[b]{0.48\textwidth}
+    \begin{subfigure}[b]{0.8\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/Q3Fixed_n_cost.png} % 请确保图片文件名与代码生成一致
-        \caption{固定 $n=2000$，不同 $p$ 值}
+        \caption{固定 $n=2000$, 不同 $p$ 值}
         \label{fig:Q3fixed_n_cost}
     \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
+    
+    \vspace{0.5cm}
+    
+    \begin{subfigure}[b]{0.8\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/Q3Fixed_p_cost.png} % 请确保图片文件名与代码生成一致
-        \caption{固定 $p=10$，不同 $n$ 值}
+        \caption{固定 $p=10$, 不同 $n$ 值}
         \label{fig:Q3fixed_p_cost}
     \end{subfigure}
     \caption{标准 L-BFGS 与阻尼 L-BFGS 的函数值收敛曲线对比}
     \label{fig:Q3convergence_curves_cost}
 \end{figure}
 
-从收敛曲线可以看出，阻尼 L-BFGS（虚线/点线）通常表现出更快的下降速率，尤其是在迭代初期和中期。标准 L-BFGS 在某些阶段会出现“震荡”或下降停滞的现象（平台期），这往往是由于当前的拟牛顿矩阵 $H_k$ 未能很好地捕获目标函数的局部几何性质。阻尼项 $(1-\theta)\delta s_k$ 的引入，相当于在拟牛顿更新中混合了一定比例的单位阵（或初始矩阵），起到了正则化的作用，使得算法运行更加平稳。
+从收敛曲线可以看出, 阻尼 L-BFGS(虚线/点线)通常表现出更快的下降速率, 尤其是在迭代初期和中期.标准 L-BFGS 在某些阶段会出现“震荡”或下降停滞的现象(平台期), 这往往是由于当前的拟牛顿矩阵 $H_k$ 未能很好地捕获目标函数的局部几何性质.阻尼项 $(1-\theta)\delta s_k$ 的引入, 相当于在拟牛顿更新中混合了一定比例的单位阵(或初始矩阵), 起到了正则化的作用, 使得算法运行更加平稳.
 
 \subsection{结论}
 
-本部分的数值实验验证了流形优化算法在处理 Stiefel 流形上二次规划问题的有效性。实验结果表明：
-\begin{enumerate}
-    \item L-BFGS 的有效性：利用向量传输（或其隐式近似）将 L-BFGS 推广至流形是成功的，能够处理数千维的优化问题。
-    \item 阻尼技术的必要性：在非凸优化问题中，阻尼 L-BFGS 相比标准 L-BFGS 表现出更强的鲁棒性和更高的效率。它通过修正梯度差向量 $y_k$，确保了拟牛顿矩阵的正定性，从而在大规模 ($n=6000$) 或高列数 ($p=200$) 的困难问题上显著减少了迭代次数和运行时间。
-\end{enumerate}
+本部分的数值实验验证了流形优化算法在处理 Stiefel 流形上二次规划问题的有效性.
+
+其一, 利用向量传输(或其隐式近似)将 L-BFGS 推广至流形能够高效处理数千维的优化问题.
+
+其二, 在非凸优化问题中, 阻尼 L-BFGS 相比标准 L-BFGS 表现出更强的鲁棒性和更高的效率.它通过修正梯度差向量 $y_k$, 确保了拟牛顿矩阵的正定性, 从而在大规模 ($n=6000$) 或高列数 ($p=200$) 的困难问题上显著减少了迭代次数和运行时间.
+
+\newpage
+\appendix
+\section{附录}
+\subsection{附件目录结构}
+附件目录结构如下:
+
+\dirtree{%
+.1 流形优化/.
+.2 python/ \dotfill \textit{Python 源代码目录}.
+.3 active\_set.py \dotfill \textit{问题二的积极集算法实现}.
+.3 Stiefel\_Opt.py \dotfill \textit{问题一和三的Stiefel流形优化}.
+.2 latex/ \dotfill \textit{\LaTeX{} 报告目录}.
+.3 main.tex \dotfill \textit{主文档源文件}.
+.3 main.pdf \dotfill \textit{编译后的PDF报告}.
+.3 figures/ \dotfill \textit{图片目录}.
+.3 tables/ \dotfill \textit{表格目录}.
+.2 林立康\_25210180078\_期末报告.pdf \dotfill \textit{PDF报告副本}.
+}
+
+\subsection{关键函数功能解释}
+
+\subsubsection{\texttt{Stiefel\_Opt.py}主要函数说明}
+
+表 \ref{tab:stiefel_functions} 列出了 \texttt{Stiefel\_Opt.py} 文件中的核心类与函数及其功能描述.
+
+\begin{small}
+\begin{longtable}{p{5.2cm}p{9.3cm}}
+\caption{\texttt{Stiefel\_Opt.py} 关键函数功能说明} \label{tab:stiefel_functions} \\
+\toprule
+\textbf{函数/类名} & \textbf{功能描述} \\
+\midrule
+\endfirsthead
+\caption[]{\texttt{Stiefel\_Opt.py} 关键函数功能说明 (续)} \\
+\toprule
+\textbf{函数/类名} & \textbf{功能描述} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{2}{r}{\textit{续下页}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+\texttt{fast\_dot(A,  B)} & 使用 BLAS 的 \texttt{ddot} 计算两个矩阵的 Frobenius 内积, 避免临时数组分配 \\
+\midrule
+\texttt{StiefelManifold.retraction} & 基于 SVD 的收缩映射, 将切向量映射回 Stiefel 流形:$R_X(\xi) = UV^T$ \\
+\midrule
+\texttt{StiefelManifold.}\newline\texttt{project\_gradient} & 计算黎曼梯度投影:$\mathrm{grad} f = \nabla f - X \cdot \mathrm{sym}(X^T \nabla f)$, 使用 BLAS 优化 \\
+\midrule
+\texttt{QuadraticProblem} & 二次目标函数类, 封装 $f(X) = \mathrm{Tr}(X^T A X) + 2\mathrm{Tr}(B^T X)$ 的计算与缓存 \\
+\midrule
+\texttt{LineSearch} & 线搜索类, 支持单调 Armijo、Grippo 非单调、Zhang-Hager 非单调三种策略 \\
+\midrule
+\texttt{SteepestDescent} & 最速下降方向策略, 返回负梯度方向 $d_k = -\mathrm{grad} f$ \\
+\midrule
+\texttt{LBFGS} & 标准 L-BFGS 方向策略, 使用双循环递归计算搜索方向, 存储 $m$ 对历史向量 \\
+\midrule
+\texttt{DampedLBFGS} & 阻尼 L-BFGS 方向策略, 通过修正 $y_k$ 保证曲率条件 $s_k^T y_k > 0$, 增强鲁棒性 \\
+\midrule
+\texttt{SubspaceLBFGS} & 子空间 L-BFGS 方向策略, 在低维 Krylov 子空间中进行拟牛顿更新 \\
+\midrule
+\texttt{FixedStep} & 固定初始步长策略, 配合 Armijo 回退线搜索使用 \\
+\midrule
+\texttt{BBStep} & Barzilai-Borwein 步长策略, 支持 BB1、BB2 及交替模式, 带截断保护 \\
+\midrule
+\texttt{StiefelSolver.solve} & 主求解器, 整合方向策略、步长策略与线搜索, 在 Stiefel 流形上迭代优化 \\
+\midrule
+\texttt{plot\_benchmark\_results} & 绘图函数, 绘制目标函数值与梯度范数的收敛曲线 \\
+\midrule
+\texttt{Q1()} & 第一题数值实验主函数, 测试 Algorithm 4.3 与 4.4, 生成 LaTeX 表格与图片 \\
+\midrule
+\texttt{Q3()} & 第三题数值实验主函数, 对比 L-BFGS 与阻尼 L-BFGS 的性能 \\
+\end{longtable}
+\end{small}
+
+\subsubsection{\texttt{active\_set.py}主要函数说明}
+
+表 \ref{tab:active_set_functions} 列出了 \texttt{active\_set.py} 文件中的核心函数及其功能描述.
+
+\begin{small}
+\begin{longtable}{p{4.8cm}p{9.7cm}}
+\caption{\texttt{active\_set.py} 关键函数功能说明} \label{tab:active_set_functions} \\
+\toprule
+\textbf{函数名} & \textbf{功能描述} \\
+\midrule
+\endfirsthead
+\caption[]{\texttt{active\_set.py} 关键函数功能说明 (续)} \\
+\toprule
+\textbf{函数名} & \textbf{功能描述} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{2}{r}{\textit{续下页}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+\texttt{\_compute\_step\_length} & Numba JIT 加速的步长计算, 遍历非活跃约束寻找阻塞约束 \\
+\midrule
+\texttt{solve\_active\_set\_qp} & 积极集法主函数, 求解凸 QP 问题, 使用 Cholesky 预分解与 Schur 补优化 \\
+\midrule
+\texttt{generate\_random\_qp} & 随机生成凸二次规划测试问题, 包括正定 Hessian $G$、约束矩阵 $A$ 及可行初始点 $x_0$ \\
+\midrule
+\texttt{run\_single\_experiment} & 运行单次对比实验, 调用积极集算法与 OSQP 求解器 \\
+\midrule
+\texttt{run\_benchmark\_suite} & 批量运行多组实验, 支持多种测试配置 \\
+\midrule
+\texttt{test\_fixed\_m} & 固定约束数量 $m$, 测试不同变量维度 $n$ 下的算法性能 \\
+\midrule
+\texttt{test\_fixed\_n} & 固定变量维度 $n$, 测试不同约束数量 $m$ 下的算法性能 \\
+\midrule
+\texttt{test\_large\_scale} & 大规模问题测试, 同时增大 $n$ 和 $m$, 评估算法的可扩展性 \\
+\midrule
+\texttt{test\_condition\_number} & 条件数敏感性测试, 评估算法的数值稳定性 \\
+\midrule
+\texttt{generate\_latex\_tables} & 将实验结果转换为 LaTeX 表格格式并保存到文件 \\
+\end{longtable}
+\end{small}
+\subsection{关键代码优化详解}
+
+笔者在编写程序\texttt{Stiefel\_Opt.py}和\texttt{active\_set.py}初版的时候发现计算速度特别慢, 于是针对代码里矩阵计算的部分进行了较多优化, 以下内容是笔者的一些思考, 供参考.本节将详细介绍两个程序中采用的关键性能优化技术, 主要涵盖BLAS底层优化、Numba JIT编译、Cholesky预分解与Schur补以及内存布局优化等方面.
+
+\subsubsection{BLAS底层矩阵运算优化}
+
+在\texttt{Stiefel\_Opt.py}中, 大量使用了SciPy封装的BLAS库函数替代NumPy的通用运算, 以获得更高的计算效率.
+
+\paragraph{快速Frobenius内积} 使用BLAS的\texttt{ddot}函数计算矩阵的Frobenius内积, 避免了临时数组的创建:
+
+\begin{lstlisting}[language=Python]
+from scipy.linalg.blas import ddot
+
+def fast_dot(A,  B):
+    '''计算两个矩阵的 Frobenius 内积'''
+    return ddot(A.ravel('F'),  B.ravel('F'))
+\end{lstlisting}
+
+相比于\texttt{np.sum(A * B)}或\texttt{np.trace(A.T @ B)}, \texttt{ddot}直接在底层进行向量点积运算, 时间复杂度为$O(np)$且无额外内存分配.
+
+\paragraph{BLAS矩阵乘法与原地运算} 在Stiefel流形的梯度投影计算中, 使用\texttt{dgemm}进行矩阵乘法并支持原地覆盖:
+
+\begin{lstlisting}[language=Python]
+@staticmethod
+def project_gradient(X,  G):
+    # 使用 dgemm 计算 X.T @ G
+    M = blas.dgemm(alpha=1.0,  a=X,  b=G,  trans_a=True)
+    # 原地对称化, 避免 M + M.T 的内存分配
+    np.add(M,  M.T,  out=M)
+    M *= 0.5
+    # overwrite_c=True 允许结果直接覆盖 G
+    return blas.dgemm(alpha=-1.0,  a=X,  b=M,  beta=1.0,  c=G,  overwrite_c=True)
+\end{lstlisting}
+
+该函数计算$\mathrm{proj}_X(G) = G - X \cdot \mathrm{sym}(X^\top G)$, 其中:
+\begin{itemize}
+    \item \texttt{trans\_a=True}使得\texttt{dgemm}内部计算$X^\top G$, 无需显式转置
+    \item \texttt{np.add(...,  out=M)}将结果直接写入\texttt{M}, 避免创建临时数组
+    \item \texttt{overwrite\_c=True}允许\texttt{dgemm}将结果直接覆盖输入矩阵\texttt{G}
+\end{itemize}
+
+\subsubsection{Fortran内存布局优化}
+
+NumPy默认使用C语言的行优先内存布局, 而BLAS库针对Fortran的列优先内存布局进行了优化.程序中统一使用Fortran顺序以获得最佳性能:
+
+\begin{lstlisting}[language=Python]
+class QuadraticProblem:
+    def __init__(self,  n,  p,  A,  B):
+        self.A = np.asfortranarray(A)  # 转换为Fortran顺序
+        self.B = np.asfortranarray(B)
+
+# 在迭代过程中保持Fortran顺序
+X = np.asfortranarray(X_init)
+X_new_curr = np.asfortranarray(X_new_raw)
+\end{lstlisting}
+
+此外, 在展平矩阵时也使用列优先顺序:
+\begin{lstlisting}[language=Python]
+q = grad_proj.copy(order='F')
+g_flat = grad_proj.ravel('F')
+\end{lstlisting}
+
+\subsubsection{Numba JIT编译加速}
+
+在\texttt{active\_set.py}中, 使用Numba的\texttt{@njit}装饰器将性能关键的循环编译为机器码:
+
+\begin{lstlisting}[language=Python]
+from numba import njit
+
+@njit(cache=True)
+def _compute_step_length(Ap,  Ax,  b,  working_mask,  tol):
+    """Numba 加速的步长计算"""
+    n = len(Ap)
+    alpha = 1.0
+    blocking_idx = -1
+    
+    for i in range(n):
+        if not working_mask[i] and Ap[i] < -tol:
+            dist = (b[i] - Ax[i]) / Ap[i]
+            if dist < alpha:
+                alpha = dist
+                blocking_idx = i
+    
+    return max(0.0,  alpha),  blocking_idx
+\end{lstlisting}
+
+该函数在积极集算法中用于寻找阻塞约束, 需要遍历所有非活跃约束.关键优化点:
+\begin{itemize}
+    \item \texttt{@njit}将Python代码编译为LLVM机器码, 执行速度接近C语言
+    \item \texttt{cache=True}将编译结果缓存到磁盘, 避免重复编译开销
+    \item 使用布尔数组\texttt{working\_mask}替代Python集合, 提升Numba兼容性
+\end{itemize}
+
+\subsubsection{Cholesky预分解与Schur补优化}
+
+积极集算法每次迭代需要求解KKT系统, 直接求解的复杂度为$O((n+m)^3)$.程序采用Cholesky预分解与Schur补技术显著降低计算量:
+
+\begin{lstlisting}[language=Python]
+def solve_active_set_qp(G,  c,  A,  b,  x0,  tol=1e-6,  max_iter=1000):
+    # 预计算 G 的 Cholesky 分解(只需一次)
+    try:
+        G_cho = cho_factor(G)
+        use_cholesky = True
+    except:
+        use_cholesky = False
+    
+    # 预计算 G^{-1} @ A^T, 这是 n×m 矩阵
+    if use_cholesky:
+        G_inv_AT = cho_solve(G_cho,  A.T)  # n × m
+    
+    # 预计算 A @ G^{-1} @ A^T 的完整矩阵(m × m)
+    AG_inv_AT = A @ G_inv_AT  # m × m
+\end{lstlisting}
+
+在迭代过程中, 利用预计算的矩阵高效求解:
+
+\begin{lstlisting}[language=Python]
+if n_active > 0:
+    # 取 G^{-1} @ A_w^T 的相关列(子矩阵切片, 无需重新计算)
+    G_inv_AwT = G_inv_AT[:,  working_list]  # n × n_active
+    
+    # Schur 补:直接取子矩阵, 复杂度 O(n_active^2)
+    S = AG_inv_AT[np.ix_(working_list,  working_list)]  # n_active × n_active
+    
+    # 求解 λ
+    rhs_lambda = G_inv_AwT.T @ g  # 等价于 A_w @ G^{-1} @ g
+    S_cho = cho_factor(S)
+    lambdas = cho_solve(S_cho,  rhs_lambda)
+    
+    # p = -G^{-1}@g + G^{-1}@A_w^T @ λ
+    p = -G_inv_g + G_inv_AwT @ lambdas
+\end{lstlisting}
+
+算法复杂度分析:
+\begin{itemize}
+    \item 预处理阶段:Cholesky分解$O(n^3)$, 计算$G^{-1}A^\top$为$O(n^2 m)$
+    \item 每次迭代:仅需$O(n_{\text{active}}^3)$求解Schur补系统, 其中$n_{\text{active}} \ll n$
+    \item 相比直接求解$(n+m)\times(n+m)$ KKT系统的$O((n+m)^3)$复杂度, 大幅降低计算量
+\end{itemize}
+
+\subsubsection{增量式矩阵-向量乘积更新}
+
+在步长计算后, 使用增量更新避免重复矩阵乘法:
+
+\begin{lstlisting}[language=Python]
+# 计算步长时已获得 Ap = A @ p
+Ap = A @ p
+alpha,  blocking_idx = _compute_step_length(Ap,  Ax,  b,  working_mask,  tol)
+
+# 增量更新 Ax, 避免重新计算 A @ x_new
+x = x + alpha * p
+Ax = Ax + alpha * Ap  # O(m) 而非 O(mn)
+\end{lstlisting}
+
+由于$A x_{\text{new}} = A(x + \alpha p) = Ax + \alpha (Ap)$, 利用已计算的$Ap$进行增量更新, 将复杂度从$O(mn)$降至$O(m)$.
+
+\subsubsection{L-BFGS双循环递归的内存优化}
+
+在\texttt{Stiefel\_Opt.py}中实现的L-BFGS算法采用了内存高效的双循环递归:
+
+\begin{lstlisting}[language=Python]
+class LBFGS(DirectionStrategy):
+    def __init__(self,  m=10):
+        self.m = m
+        self.memory = deque(maxlen=m)  # 使用双端队列, 自动丢弃旧记录
+
+    def compute_direction(self,  grad_proj):
+        if not self.memory: return -grad_proj
+        q = grad_proj.copy(order='F')
+        mem_len = len(self.memory)
+        alphas = [0.0] * mem_len
+        
+        # 第一循环:从新到旧
+        for i in range(mem_len - 1,  -1,  -1):
+            s,  y,  rho = self.memory[i]
+            alpha = rho * fast_dot(s,  q)
+            alphas[i] = alpha
+            q -= alpha * y
+        
+        # 初始Hessian近似
+        s_last,  y_last,  rho_last = self.memory[-1]
+        yy_last = fast_dot(y_last,  y_last)
+        gamma = (1.0 / rho_last) / yy_last if yy_last > 1e-20 else 1.0
+        r = q 
+        r *= gamma  # 原地缩放
+        
+        # 第二循环:从旧到新
+        for i in range(mem_len):
+            s,  y,  rho = self.memory[i]
+            beta = rho * fast_dot(y,  r)
+            r += s * (alphas[i] - beta)
+        return -r
+\end{lstlisting}
+
+优化要点:
+\begin{itemize}
+    \item 使用\texttt{deque(maxlen=m)}自动维护固定长度的历史记录
+    \item 仅存储向量对$(s_k,  y_k)$及标量$\rho_k = 1/(s_k^\top y_k)$, 空间复杂度$O(mn)$
+    \item 预计算并复用$\rho_k$, 避免重复除法运算
+    \item 使用\texttt{fast\_dot}替代NumPy运算, 减少临时数组
+\end{itemize}
+
+\subsubsection{缓存中间计算结果}
+
+在目标函数求值时, 缓存中间结果$AX$以供梯度计算复用:
+
+\begin{lstlisting}[language=Python]
+def compute_cost_and_cache(self,  X):
+    '''
+    二次型目标函数: f(X) = Tr(X^T A X) + 2 Tr(B^T X)
+    '''
+    AX = blas.dgemm(alpha=1.0,  a=self.A,  b=X)  # 缓存 AX
+    term1 = fast_dot(X,  AX)
+    term2 = 2.0 * fast_dot(self.B,  X)
+    return term1 + term2,  AX  # 返回缓存值
+
+def compute_euclidean_grad(self,  X,  AX):
+    '''
+    ∇f(X) = 2 A X + 2 B
+    '''
+    G = self.B.copy(order='F')
+    G += AX  # 复用缓存的 AX
+    G *= 2.0
+    return G
+\end{lstlisting}
+
+由于梯度$\nabla f(X) = 2AX + 2B$中需要计算$AX$, 而目标函数$f(X) = \mathrm{Tr}(X^\top AX)$的求值过程也需要$AX$, 因此将其缓存可避免重复的$O(n^2 p)$矩阵乘法运算.
 
 \end{document}

@@ -1,0 +1,19 @@
+\begin{table}[H]
+    \centering
+    \small
+    \caption{不同线搜索策略对比 (固定步长)}
+    \begin{tabular}{lccccc}
+        \toprule
+        \textbf{维度} $(n, p)$ & \textbf{方法} & \textbf{时间 (s)} & \textbf{迭代次数} & \textbf{最小} $f$ & \textbf{最终} $\|\nabla f\|$ \\
+        \midrule
+        \multirow{3}{*}{$(500, 10)$} & SD + Monotone + Armijo & 8.7288 & 1500 & 1.7470e+01 & 1.26e+01 \\
+        & SD + Grippo(M=10) + Armijo & 8.1285 & 1500 & 2.9584e+01 & 2.72e+03 \\
+        & SD + ZH(rho=0.5) + Armijo & 7.0578 & 1500 & 1.7754e+01 & 1.59e+01 \\
+        \cmidrule{1-6}
+        \multirow{3}{*}{$(1000, 20)$} & SD + Monotone + Armijo & 55.2241 & 1500 & 3.5839e+01 & 1.70e+01 \\
+        & SD + Grippo(M=10) + Armijo & 59.2974 & 1500 & 5.5286e+01 & 6.12e+03 \\
+        & SD + ZH(rho=0.5) + Armijo & 61.0823 & 1500 & 3.6477e+01 & 2.14e+01 \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:Q1_G1}
+\end{table}

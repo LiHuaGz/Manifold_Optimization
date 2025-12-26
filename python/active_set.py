@@ -4,6 +4,9 @@ from scipy import sparse
 from scipy.linalg import solve, cho_factor, cho_solve, solve_triangular
 from numba import njit
 import time
+import os
+from datetime import datetime
+import sys
 
 @njit(cache=True)
 def _compute_step_length(Ap, Ax, b, working_mask, tol):
@@ -176,9 +179,6 @@ def generate_random_qp(n=100, m=50, seed=42):
 # ==========================================
 # 测试模块：数值实验
 # ==========================================
-
-import os
-from datetime import datetime
 
 def run_single_experiment(n_vars, n_constr, seed=42, tol=1e-6, max_iter=1000):
     """
@@ -709,7 +709,7 @@ $n$ & $m$ & 有效集法 & OSQP & 测试类型 \\
 
 def run_quick_demo():
     """
-    快速演示：原有的单次测试
+    快速演示：单次测试
     """
     N_VARS = 2000
     N_CONSTR = 500
@@ -765,8 +765,6 @@ def run_quick_demo():
 # 主程序
 # ==========================================
 if __name__ == "__main__":
-    import sys
-    
     # 获取脚本所在目录
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(script_dir)

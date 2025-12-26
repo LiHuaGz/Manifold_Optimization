@@ -2,14 +2,6 @@ import os
 import time
 from collections import deque
 import gc
-
-# --- 1. 环境配置 ---
-os.environ['OMP_NUM_THREADS'] = '1'
-os.environ['MKL_NUM_THREADS'] = '1'
-os.environ['OPENBLAS_NUM_THREADS'] = '1'
-os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
-os.environ['NUMEXPR_NUM_THREADS'] = '1'
-
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.linalg.blas as blas
@@ -413,10 +405,11 @@ def save_latex_table(results_data, filename="benchmark_results.txt"):
     header = r"""
 \begin{table}[h]
     \centering
+    \small
     \caption{优化算法性能对比}
     \begin{tabular}{|l|c|c|c|c|}
         \hline
-        \textbf{方法} & \textbf{步长策略} & \textbf{时间 (秒)} & \textbf{最小成本} & \textbf{迭代次数} \\
+        \textbf{方法} & \textbf{步长策略} & \textbf{时间 (秒)} & \textbf{最小} $f$ & \textbf{迭代次数} \\
         \hline
 """
     footer = r"""        \hline
@@ -438,79 +431,9 @@ def save_latex_table(results_data, filename="benchmark_results.txt"):
     
     print(f"LaTeX 表格已保存至: {os.path.abspath(filename)}")
 
-
-# 修正 strategies 列表的定义，确保格式统一
-def main():
-    n, p = 500, 5
-    print(f"Matrix Size: {n}x{n}, Stiefel Manifold St({n}, {p})")
-    
-    np.random.seed(42)
-    A_raw = np.random.rand(n, n)
-    A = np.asfortranarray(A_raw.T @ A_raw)
-    B = np.asfortranarray(np.zeros((n, p)))
-    x0, _ = np.linalg.qr(np.random.randn(n, p))
-    
-    solver = StiefelSolver(n, p, A, B)
-    
-    # 统一格式: (DirStrat, StepStrat, DirName, StepName)
-    strategies = [
-        (SteepestDescent(), FixedStep(1.0), "GD", "Armijo"),
-        (SteepestDescent(), BBStep(), "GD", "BB Step"),
-        (LBFGS(m=10), FixedStep(1.0), "L-BFGS", "Armijo"),
-        (DampedLBFGS(m=10, delta=20.0), FixedStep(1.0), "Damped L-BFGS", "Armijo"),
-        (SubspaceLBFGS(max_dim=20, delta=1.0), FixedStep(1.0), "Subspace L-BFGS", "Armijo")
-    ]
-    
-    results = {}
-    table_data = []
-    
-    print("开始基准测试...")
-    
-    for i, (d_strat, s_strat, d_name, s_name) in enumerate(strategies):
-        full_name = f"{d_name}"
-        if "BB" in s_name: full_name += " (BB)"
-        
-        # position=i 允许同时显示多个条（虽然这里是串行执行，但会保留在屏幕上）
-        pbar = tqdm(total=2000, desc=f"{full_name:<22}", position=i, leave=True, 
-                    bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]")
-        
-        start = time.time()
-        _, f_vals, iters = solver.solve(
-            x0.copy(), d_strat, s_strat, max_iters=2000, pbar=pbar
-        )
-        elapsed = time.time() - start
-        pbar.close()
-        
-        min_f = min(f_vals) if f_vals else float('inf')
-        results[full_name] = f_vals
-        
-        table_data.append({
-            "name": d_name,
-            "step": s_name,
-            "time": elapsed,
-            "min_f": min_f,
-            "iters": iters
-        })
-
-    # 手动换行，跳过进度条区域
-    print("\n" * 1) 
-    save_latex_table(table_data)
-
-    plt.figure(figsize=(10, 6))
-    for name, f_vals in results.items():
-        style = '--' if 'Damped' in name else ('-.' if 'Subspace' in name else '-')
-        plt.semilogy(f_vals, label=name, linestyle=style, linewidth=1.5)
-    
-    plt.legend()
-    plt.title(f'Optimization Convergence (n={n}, p={p})')
-    plt.xlabel('Iteration')
-    plt.ylabel('Cost Value (log scale)')
-    plt.grid(True, which="both", ls="--", alpha=0.5)
-    plt.show()
-
 def plot_benchmark_results(results_dict, group_name="Benchmark", plot_fx=False, plot_gradnorm=True, save_name=('','')):
     """
-    通用绘图函数，兼顾屏幕阅读（颜色）和黑白打印（线型+标记）。
+    通用绘图函数
     save_name: (directory, filename_prefix)
     """
     # 预设样式循环：(颜色, 线型, 标记)
@@ -590,52 +513,17 @@ def plot_benchmark_results(results_dict, group_name="Benchmark", plot_fx=False, 
             fig2.savefig(os.path.join(save_name[0], f"{save_name[1]}_gradnorm.png"), dpi=300)
 
 
-def Q1():
+def Q1(fig_save_dir=None, text_save_dir=None):
     '''
-    第一题：编程实现 Algorithm 4.3 与 Algorithm 4.4 。数值实验，自己随机生成 Stiefel 流形的一个二次函数，用  Algorithm 4.3 和 4.4 极小化这个二次函数，比较两个算法的计算效果，探索非单调的作用，或者交替使用 BB步长两个公式的作用。
+    第一题：数值实验，多维度测试，并输出 LaTeX 表格和图片。
     '''
-    # --- 实验设置 ---
-    n, p = 500, 10  # Stiefel 流形 St(n, p)
-    print(f"=== Algorithm 4.3 & 4.4 Benchmarking ===")
-    print(f"Stiefel Manifold St({n}, {p}) with Quadratic Cost")
+    # --- 1. 实验维度设置 ---
+    # 在这里添加你想测试的维度 (n, p)
+    dims_list = [
+        (500, 10), 
+        (1000, 20)
+    ]
     
-    # 随机生成二次函数数据: min Tr(X.T A X) + 2 Tr(B.T X)
-    # 构造具有指定条件数的正定矩阵 A
-    cond_num = 1e4
-    min_eig, max_eig = 1.0, cond_num
-    eig_vals = np.logspace(0, np.log10(cond_num), n)   # 方式A: 对数分布
-    # eig_vals = np.linspace(min_eig, max_eig, n)   # 方式B: 线性分布
-    Lambda = np.diag(eig_vals)
-    X = np.random.randn(n, n)   # 生成随机高斯矩阵
-    Q, _ = np.linalg.qr(X)  # QR分解获取正交阵 Q
-    A = Q @ Lambda @ Q.T
-    A = np.asfortranarray((A + A.T) / 2)    # 强制对称性 (消除浮点数计算误差)
-
-    #B = np.asfortranarray(np.random.randn(n, p))
-    B = np.asfortranarray(np.zeros((n, p)))  # 只考虑纯二次项
-    
-    # 初始点
-    x0, _ = np.linalg.qr(np.random.randn(n, p))
-    
-    solver = StiefelSolver(n, p, A, B)
-    
-    # --- 定义对比策略 ---
-    # 第一组: 比较三种非单调线搜索策略(Armijo)
-    # 1. Steepest Descent + Monotone (M=1) + Armijo
-    # 2. Steepest Descent + Grippo (M=10) + Armijo
-    # 3. Steepest Descent + ZH (rho=0.5) + Armijo
-
-    # 第二组: 比较三种非单调线搜索策略(BB步长)
-    # 1. Steepest Descent + Monotone (M=1) + Alternating BB
-    # 2. Steepest Descent + Grippo (M=10) + Alternating BB
-    # 3. Steepest Descent + Zhang-Hager (rho=0.5) + Alternating BB
-
-    # 第三组: 比较三种 BB 步长公式 (均使用 ZH 非单调线搜索)
-    # 1. Steepest Descent + Monotone (M=1) + Armijo
-    # 2. Steepest Descent + ZH (rho=0.5) + BB1
-    # 3. Steepest Descent + ZH (rho=0.5) + BB2
-    # 4. Steepest Descent + ZH (rho=0.5) + Alternating BB
-
     # 通用参数
     common_params = {
         'max_iters': 1500,
@@ -643,88 +531,207 @@ def Q1():
         'max_ls_iters': 30
     }
 
-    # --- 定义三组实验配置 ---
-    # 格式: (Label, Direction, StepStrategy, LS_Strategy, LS_Memory, ZH_Rho)
-    
-    groups = []
+    print(f"\n{'='*65}\nRunning Q1: Algorithm 4.3 & 4.4 Benchmarking (Multi-dim)\n{'='*65}")
 
-    # Group 1: 固定步长(Armijo)下，不同线搜索策略的对比
-    groups.append({
-        "name": "Group 1: Different Line Search Strategies (Fixed Step)",
-        "configs": [
-            ("SD + Monotone + Armijo", SteepestDescent(), FixedStep(1.0), 'monotone', 1, 0.5),
-            ("SD + Grippo(M=10) + Armijo", SteepestDescent(), FixedStep(1.0), 'grippo', 10, 0.5),
-            ("SD + ZH(rho=0.5) + Armijo", SteepestDescent(), FixedStep(1.0), 'zhang_hager', 1, 0.5),
-        ]
-    })
+    # 用于存储生成 LaTeX 表格的数据
+    # 结构: data[group_name] = { (n,p): [row_dict, row_dict, ...] }
+    latex_tables_data = {}
 
-    # Group 2: BB步长(Alternating)下，不同线搜索策略的对比
-    groups.append({
-        "name": "Group 2: Different Line Search Strategies (BB Alt Step)",
-        "configs": [
-            ("SD + Monotone + BB(Alt)", SteepestDescent(), BBStep(mode='alt'), 'monotone', 1, 0.5),
-            ("SD + Grippo(M=10) + BB(Alt)", SteepestDescent(), BBStep(mode='alt'), 'grippo', 10, 0.5),
-            ("SD + ZH(rho=0.5) + BB(Alt)", SteepestDescent(), BBStep(mode='alt'), 'zhang_hager', 1, 0.5),
-        ]
-    })
-
-    # Group 3: 固定线搜索(ZH/Monotone)下，不同步长公式的对比
-    # 注：题目要求 Baseline 为 Monotone+Armijo，其余为 ZH+BB 变种
-    groups.append({
-        "name": "Group 3: Different Step Sizes (Baseline vs ZH+BB)",
-        "configs": [
-            ("SD + Monotone + Armijo", SteepestDescent(), FixedStep(1.0), 'monotone', 1, 0.5),
-            ("SD + ZH + BB1", SteepestDescent(), BBStep(mode='bb1'), 'zhang_hager', 1, 0.5),
-            ("SD + ZH + BB2", SteepestDescent(), BBStep(mode='bb2'), 'zhang_hager', 1, 0.5),
-            ("SD + ZH + BB(Alt)", SteepestDescent(), BBStep(mode='alt'), 'zhang_hager', 1, 0.5),
-        ]
-    })
-
-    # --- 运行循环 ---
-    for group in groups:
-        print(f"\n{'='*20}\nRunning {group['name']}\n{'='*20}")
-        group_results = {}
+    # --- 2. 遍历每一个维度配置 ---
+    for n, p in dims_list:
+        np.random.seed(42 + n) 
+        print(f"\n>>> Processing Dimensions: n={n}, p={p}")
         
-        # 使用 enumerate 主要是为了让 tqdm 的 position 正确显示
-        for i, conf in enumerate(group['configs']):
-            label, d_strat, s_strat, ls_strat, ls_mem, zh_rho = conf
+        # --- 数据生成 (对该维度下的所有方法保持一致) ---
+        cond_num = 1e4
+        eig_vals = np.logspace(0, np.log10(cond_num), n)
+        Lambda = np.diag(eig_vals)
+        X_rnd = np.random.randn(n, n)
+        Q_mat, _ = np.linalg.qr(X_rnd)
+        A = Q_mat @ Lambda @ Q_mat.T
+        A = np.asfortranarray((A + A.T) / 2)
+        B = np.asfortranarray(np.zeros((n, p)))
+        x0, _ = np.linalg.qr(np.random.randn(n, p))
+        
+        solver = StiefelSolver(n, p, A, B)
+
+        # --- 定义三组实验配置 (保持原有实验组设定) ---
+        # 注意：在这里重新定义是为了方便在循环中引用，并确保对象是新的
+        
+        experiment_groups = []
+
+        # Group 1: 固定步长(Armijo)下，不同线搜索策略的对比
+        experiment_groups.append({
+            "id": "G1",
+            "name": "Different Line Search Strategies (Fixed Step)",
+            "cn_name": "不同线搜索策略对比 (固定步长)",
+            "configs": [
+                ("SD + Monotone + Armijo", SteepestDescent(), FixedStep(1.0), 'monotone', 1, 0.5),
+                ("SD + Grippo(M=10) + Armijo", SteepestDescent(), FixedStep(1.0), 'grippo', 10, 0.5),
+                ("SD + ZH(rho=0.5) + Armijo", SteepestDescent(), FixedStep(1.0), 'zhang_hager', 1, 0.5),
+            ]
+        })
+
+        # Group 2: BB步长(Alternating)下，不同线搜索策略的对比
+        experiment_groups.append({
+            "id": "G2",
+            "name": "Different Line Search Strategies (BB Alt Step)",
+            "cn_name": "不同线搜索策略对比 (BB交替步长)",
+            "configs": [
+                ("SD + Monotone + BB(Alt)", SteepestDescent(), BBStep(mode='alt'), 'monotone', 1, 0.5),
+                ("SD + Grippo(M=10) + BB(Alt)", SteepestDescent(), BBStep(mode='alt'), 'grippo', 10, 0.5),
+                ("SD + ZH(rho=0.5) + BB(Alt)", SteepestDescent(), BBStep(mode='alt'), 'zhang_hager', 1, 0.5),
+            ]
+        })
+
+        # Group 3: 固定线搜索(ZH/Monotone)下，不同步长公式的对比
+        experiment_groups.append({
+            "id": "G3",
+            "name": "Different Step Sizes (Baseline vs ZH+BB)",
+            "cn_name": "不同步长公式对比",
+            "configs": [
+                ("SD + Monotone + Armijo", SteepestDescent(), FixedStep(1.0), 'monotone', 1, 0.5),
+                ("SD + ZH + BB1", SteepestDescent(), BBStep(mode='bb1'), 'zhang_hager', 1, 0.5),
+                ("SD + ZH + BB2", SteepestDescent(), BBStep(mode='bb2'), 'zhang_hager', 1, 0.5),
+                ("SD + ZH + BB(Alt)", SteepestDescent(), BBStep(mode='alt'), 'zhang_hager', 1, 0.5),
+            ]
+        })
+
+        # --- 运行实验组 ---
+        for group in experiment_groups:
+            group_id = group['id']
+            group_cn_name = group['cn_name']
             
-            pbar = tqdm(total=common_params['max_iters'], desc=f"{label:<30}", leave=True)
+            # 初始化该组的数据存储结构
+            if group_id not in latex_tables_data:
+                latex_tables_data[group_id] = {
+                    'cn_name': group_cn_name,
+                    'dims_data': {}
+                }
+            if (n, p) not in latex_tables_data[group_id]['dims_data']:
+                latex_tables_data[group_id]['dims_data'][(n, p)] = []
+
+            group_results_for_plot = {} # 用于当前维度绘图的数据
+
+            print(f"  Running {group['id']}: {group['name']}")
             
-            start_t = time.time()
-            _, f_vals, g_norms, iters = solver.solve(
-                x0.copy(),
-                direction_strategy=d_strat,
-                step_strategy=s_strat,
-                max_iters=common_params['max_iters'],
-                tol=common_params['tol'],
-                pbar=pbar,
-                ls_strategy=ls_strat,
-                ls_memory=ls_mem,
-                zh_rho=zh_rho,
-                max_ls_iters=common_params['max_ls_iters']
+            for i, conf in enumerate(group['configs']):
+                label, d_strat, s_strat, ls_strat, ls_mem, zh_rho = conf
+                
+                # 复制初始点
+                X_init = x0.copy()
+
+                pbar = tqdm(total=common_params['max_iters'], desc=f"    {label:<28}", leave=False)
+                
+                start_t = time.time()
+                _, f_vals, g_norms, iters = solver.solve(
+                    X_init,
+                    direction_strategy=d_strat,
+                    step_strategy=s_strat,
+                    max_iters=common_params['max_iters'],
+                    tol=common_params['tol'],
+                    pbar=pbar,
+                    ls_strategy=ls_strat,
+                    ls_memory=ls_mem,
+                    zh_rho=zh_rho,
+                    max_ls_iters=common_params['max_ls_iters']
+                )
+                elapsed = time.time() - start_t
+                pbar.close()
+                
+                min_cost = min(f_vals) if f_vals else 0.0
+                final_grad = g_norms[-1] if g_norms else 0.0
+
+                # 1. 收集绘图数据
+                group_results_for_plot[label] = {
+                    'f': np.array(f_vals),
+                    'g': np.array(g_norms)
+                }
+
+                # 2. 收集表格数据
+                row_data = {
+                    "method": label,
+                    "time": elapsed,
+                    "iter": iters,
+                    "min_f": min_cost,
+                    "final_g": final_grad
+                }
+                latex_tables_data[group_id]['dims_data'][(n, p)].append(row_data)
+
+            # --- 为当前维度、当前实验组绘图并保存 ---
+            # 文件名示例: Q1_G1_n500_p10_cost.png
+            file_suffix = f"{group_id}_n{n}_p{p}"
+            plot_benchmark_results(
+                group_results_for_plot, 
+                group_name=f"{group['name']} (n={n}, p={p})",
+                plot_fx=True, 
+                plot_gradnorm=True,
+                save_name=(fig_save_dir, f"Q1_{file_suffix}")
             )
-            elapsed = time.time() - start_t
-            pbar.close()
             
-            # 记录结果
-            group_results[label] = {
-                'f': np.array(f_vals),
-                'g': np.array(g_norms),
-                'time': elapsed,
-                'iter': iters
-            }
+    # --- 3. 生成 LaTeX 表格 ---
+    # 定义内部函数用于写入 LaTeX
+    def save_q1_latex(group_id, info_dict, save_dir):
+        if not save_dir: return
         
-        # --- 每组跑完后立即画图 ---
-        # 打印简单统计表
-        print(f"\nSummary for {group['name']}:")
-        print(f"{'Method':<35} | {'Time(s)':<8} | {'Iter':<5} | {'Min Cost':<12}")
-        print("-" * 75)
-        for label, res in group_results.items():
-            print(f"{label:<35} | {res['time']:.4f}   | {res['iter']:<5} | {res['f'].min():.4e}")
+        cn_title = info_dict['cn_name']
+        dims_data_map = info_dict['dims_data']
         
-        # 调用独立绘图函数
-        plot_benchmark_results(group_results, group_name=group['name'])
+        filename = os.path.join(save_dir, f"Q1_{group_id}.tex")
+        
+        header = r"""\begin{table}[H]
+    \centering
+    \small
+    \caption{""" + cn_title + r"""}
+    \begin{tabular}{lccccc}
+        \toprule
+        \textbf{维度} $(n, p)$ & \textbf{方法} & \textbf{时间 (s)} & \textbf{迭代次数} & \textbf{最小} $f$ & \textbf{最终} $\|\nabla f\|$ \\
+        \midrule
+"""
+        footer = r"""        \bottomrule
+    \end{tabular}
+    \label{tab:Q1_""" + group_id + r"""}
+\end{table}
+"""
+        
+        with open(filename, "w", encoding='utf-8') as f:
+            f.write(header)
+            
+            # 按维度排序写入
+            sorted_dims = sorted(dims_data_map.keys())
+            
+            for dim_idx, dim_key in enumerate(sorted_dims):
+                n_val, p_val = dim_key
+                rows = dims_data_map[dim_key]
+                num_rows = len(rows)
+                dim_str = f"$({n_val}, {p_val})$"
+                
+                # 第一行带有维度 Multirow
+                first = rows[0]
+                if num_rows > 1:
+                    f.write(f"        \\multirow{{{num_rows}}}{{*}}{{{dim_str}}} ")
+                else:
+                    f.write(f"        {dim_str} ")
+                
+                f.write(f"& {first['method']} & {first['time']:.4f} & {first['iter']} & {first['min_f']:.4e} & {first['final_g']:.2e} \\\\\n")
+                
+                # 后续行
+                for r in rows[1:]:
+                    f.write(f"        & {r['method']} & {r['time']:.4f} & {r['iter']} & {r['min_f']:.4e} & {r['final_g']:.2e} \\\\\n")
+                
+                # 分隔线 (最后一行除外)
+                if dim_idx < len(sorted_dims) - 1:
+                    f.write(r"        \cmidrule{1-6}" + "\n")
+            
+            f.write(footer)
+        print(f"LaTeX 表格已保存: {filename}")
+
+    # 循环生成所有组的表格
+    if text_save_dir:
+        print("\n=== Generating LaTeX Tables ===")
+        for gid, info in latex_tables_data.items():
+            save_q1_latex(gid, info, text_save_dir)
+        print("注意：需要在 LaTeX 导言区添加 \\usepackage{multirow} 和 \\usepackage{booktabs}")
 
 def Q3(fig_save_dir=None, text_save_dir=None, test_damped=False,test_subspace=False):
     '''
@@ -801,13 +808,6 @@ def Q3(fig_save_dir=None, text_save_dir=None, test_damped=False,test_subspace=Fa
                 
                 # 必须复制 x0，确保起点一致
                 x0 = x0_base.copy()
-
-                # 重置策略状态 (如果是带记忆的策略)
-                # 注：每次循环都重新实例化了 d_strat 对象吗？
-                # 上面的 methods_to_test 是在循环外定义的实例。
-                # LBFGS 类有内部状态 (memory)，必须手动重置或重新实例化。
-                # 为了安全，这里我们重新实例化策略，或者手动清空 memory。
-                # 这里简单起见，利用 type() 重新创建一个新的实例
                 if isinstance(d_strat, LBFGS):
                     d_instance = type(d_strat)(m=lbfgs_m)
                     if hasattr(d_strat, 'delta'): # Damped
@@ -864,6 +864,7 @@ def Q3(fig_save_dir=None, text_save_dir=None, test_damped=False,test_subspace=Fa
             # LaTeX 表格头部（需要 \usepackage{multirow} 和 \usepackage{booktabs}）
             header = r"""\begin{table}[H]
     \centering
+    \small
     \caption{ """ + exp_config['desc'] + r"""}
     \begin{tabular}{lcccccc}
         \toprule
@@ -925,4 +926,5 @@ if __name__ == "__main__":
         os.makedirs(fig_save_dir)
     if not os.path.exists(text_save_dir):
         os.makedirs(text_save_dir)
+    Q1(fig_save_dir=fig_save_dir, text_save_dir=text_save_dir)
     Q3(fig_save_dir=fig_save_dir, text_save_dir=text_save_dir, test_damped=True, test_subspace=False)

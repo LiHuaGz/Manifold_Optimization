@@ -8,29 +8,49 @@
 \contentsline {subsubsection}{\numberline {1.3.2}线搜索策略}{2}{subsubsection.1.3.2}%
 \contentsline {subsubsection}{\numberline {1.3.3}算法流程}{3}{subsubsection.1.3.3}%
 \contentsline {subsubsection}{\numberline {1.3.4}算法 4.4: BB 步长方法}{3}{subsubsection.1.3.4}%
-\contentsline {subsection}{\numberline {1.4}测试与结果}{4}{subsection.1.4}%
-\contentsline {section}{\numberline {2}第二题}{4}{section.2}%
-\contentsline {subsection}{\numberline {2.1}凸二次规划的积极集算法总结}{4}{subsection.2.1}%
-\contentsline {subsubsection}{\numberline {2.1.1}问题定义}{5}{subsubsection.2.1.1}%
-\contentsline {subsubsection}{\numberline {2.1.2}工作集的定义}{5}{subsubsection.2.1.2}%
-\contentsline {subsubsection}{\numberline {2.1.3}算法的核心逻辑}{5}{subsubsection.2.1.3}%
-\contentsline {subsubsection}{\numberline {2.1.4}算法伪代码}{5}{subsubsection.2.1.4}%
-\contentsline {subsubsection}{\numberline {2.1.5}收敛性分析}{6}{subsubsection.2.1.5}%
-\contentsline {subsection}{\numberline {2.2}数值实验与结果分析}{7}{subsection.2.2}%
-\contentsline {subsubsection}{\numberline {2.2.1}实验设置}{7}{subsubsection.2.2.1}%
-\contentsline {subsubsection}{\numberline {2.2.2}固定约束数量的性能测试}{7}{subsubsection.2.2.2}%
-\contentsline {subsubsection}{\numberline {2.2.3}固定变量维度的性能测试}{7}{subsubsection.2.2.3}%
-\contentsline {subsubsection}{\numberline {2.2.4}大规模问题测试}{8}{subsubsection.2.2.4}%
-\contentsline {subsubsection}{\numberline {2.2.5}条件数敏感性测试}{8}{subsubsection.2.2.5}%
-\contentsline {subsubsection}{\numberline {2.2.6}综合结果汇总}{9}{subsubsection.2.2.6}%
-\contentsline {subsubsection}{\numberline {2.2.7}结论}{9}{subsubsection.2.2.7}%
-\contentsline {section}{\numberline {3}第三题}{9}{section.3}%
-\contentsline {subsection}{\numberline {3.1}问题描述}{9}{subsection.3.1}%
-\contentsline {subsection}{\numberline {3.2}流形上的L-BFGS 算法描述}{10}{subsection.3.2}%
-\contentsline {subsubsection}{\numberline {3.2.1}算法流程}{10}{subsubsection.3.2.1}%
-\contentsline {subsection}{\numberline {3.3}阻尼 L-BFGS 更新}{12}{subsection.3.3}%
-\contentsline {subsection}{\numberline {3.4}子空间L-BFGS方法}{12}{subsection.3.4}%
-\contentsline {subsection}{\numberline {3.5}数值实验与结果分析}{14}{subsection.3.5}%
-\contentsline {subsubsection}{\numberline {3.5.1}实验设置}{14}{subsubsection.3.5.1}%
-\contentsline {subsubsection}{\numberline {3.5.2}结果分析}{15}{subsubsection.3.5.2}%
-\contentsline {subsection}{\numberline {3.6}结论}{17}{subsection.3.6}%
+\contentsline {subsection}{\numberline {1.4}数值实验与结果分析}{4}{subsection.1.4}%
+\contentsline {subsubsection}{\numberline {1.4.1}实验设置}{4}{subsubsection.1.4.1}%
+\contentsline {subsubsection}{\numberline {1.4.2}实验组一: 固定步长下不同线搜索策略对比}{5}{subsubsection.1.4.2}%
+\contentsline {subsubsection}{\numberline {1.4.3}实验组二: BB步长下不同线搜索策略对比}{5}{subsubsection.1.4.3}%
+\contentsline {subsubsection}{\numberline {1.4.4}实验组三: 不同步长公式对比}{5}{subsubsection.1.4.4}%
+\contentsline {subsubsection}{\numberline {1.4.5}结果分析}{8}{subsubsection.1.4.5}%
+\contentsline {section}{\numberline {2}第二题}{10}{section.2}%
+\contentsline {subsection}{\numberline {2.1}凸二次规划的积极集算法总结}{10}{subsection.2.1}%
+\contentsline {subsubsection}{\numberline {2.1.1}问题定义}{10}{subsubsection.2.1.1}%
+\contentsline {subsubsection}{\numberline {2.1.2}工作集的定义}{10}{subsubsection.2.1.2}%
+\contentsline {subsubsection}{\numberline {2.1.3}算法的核心逻辑}{10}{subsubsection.2.1.3}%
+\contentsline {subsubsection}{\numberline {2.1.4}算法伪代码}{11}{subsubsection.2.1.4}%
+\contentsline {subsubsection}{\numberline {2.1.5}收敛性分析}{11}{subsubsection.2.1.5}%
+\contentsline {subsection}{\numberline {2.2}数值实验与结果分析}{11}{subsection.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.1}实验设置}{11}{subsubsection.2.2.1}%
+\contentsline {subsubsection}{\numberline {2.2.2}固定约束数量的性能测试}{13}{subsubsection.2.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.3}固定变量维度的性能测试}{13}{subsubsection.2.2.3}%
+\contentsline {subsubsection}{\numberline {2.2.4}大规模问题测试}{14}{subsubsection.2.2.4}%
+\contentsline {subsubsection}{\numberline {2.2.5}条件数敏感性测试}{14}{subsubsection.2.2.5}%
+\contentsline {subsubsection}{\numberline {2.2.6}综合结果汇总}{14}{subsubsection.2.2.6}%
+\contentsline {subsubsection}{\numberline {2.2.7}结论}{15}{subsubsection.2.2.7}%
+\contentsline {section}{\numberline {3}第三题}{15}{section.3}%
+\contentsline {subsection}{\numberline {3.1}问题描述}{15}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}流形上的L-BFGS 算法描述}{15}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}算法流程}{15}{subsubsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.3}阻尼 L-BFGS 更新}{16}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}子空间L-BFGS方法}{18}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}数值实验与结果分析}{19}{subsection.3.5}%
+\contentsline {subsubsection}{\numberline {3.5.1}实验设置}{19}{subsubsection.3.5.1}%
+\contentsline {subsubsection}{\numberline {3.5.2}结果分析}{20}{subsubsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.6}结论}{21}{subsection.3.6}%
+\contentsline {section}{\numberline {A}附录}{24}{appendix.A}%
+\contentsline {subsection}{\numberline {A.1}附件目录结构}{24}{subsection.A.1}%
+\contentsline {subsection}{\numberline {A.2}关键函数功能解释}{24}{subsection.A.2}%
+\contentsline {subsubsection}{\numberline {A.2.1}\texttt {Stiefel\_Opt.py}主要函数说明}{24}{subsubsection.A.2.1}%
+\contentsline {subsubsection}{\numberline {A.2.2}\texttt {active\_set.py}主要函数说明}{25}{subsubsection.A.2.2}%
+\contentsline {subsection}{\numberline {A.3}关键代码优化详解}{26}{subsection.A.3}%
+\contentsline {subsubsection}{\numberline {A.3.1}BLAS底层矩阵运算优化}{26}{subsubsection.A.3.1}%
+\contentsline {paragraph}{快速Frobenius内积}{26}{section*.17}%
+\contentsline {paragraph}{BLAS矩阵乘法与原地运算}{26}{section*.18}%
+\contentsline {subsubsection}{\numberline {A.3.2}Fortran内存布局优化}{27}{subsubsection.A.3.2}%
+\contentsline {subsubsection}{\numberline {A.3.3}Numba JIT编译加速}{27}{subsubsection.A.3.3}%
+\contentsline {subsubsection}{\numberline {A.3.4}Cholesky预分解与Schur补优化}{28}{subsubsection.A.3.4}%
+\contentsline {subsubsection}{\numberline {A.3.5}增量式矩阵-向量乘积更新}{29}{subsubsection.A.3.5}%
+\contentsline {subsubsection}{\numberline {A.3.6}L-BFGS双循环递归的内存优化}{29}{subsubsection.A.3.6}%
+\contentsline {subsubsection}{\numberline {A.3.7}缓存中间计算结果}{30}{subsubsection.A.3.7}%

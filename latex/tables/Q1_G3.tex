@@ -1,0 +1,21 @@
+\begin{table}[H]
+    \centering
+    \small
+    \caption{不同步长公式对比}
+    \begin{tabular}{lccccc}
+        \toprule
+        \textbf{维度} $(n, p)$ & \textbf{方法} & \textbf{时间 (s)} & \textbf{迭代次数} & \textbf{最小} $f$ & \textbf{最终} $\|\nabla f\|$ \\
+        \midrule
+        \multirow{4}{*}{$(500, 10)$} & SD + Monotone + Armijo & 7.9044 & 1500 & 1.7470e+01 & 1.26e+01 \\
+        & SD + ZH + BB1 & 1.3805 & 1500 & 1.1630e+01 & 5.80e+00 \\
+        & SD + ZH + BB2 & 0.7689 & 1500 & 1.0985e+01 & 1.70e-01 \\
+        & SD + ZH + BB(Alt) & 0.9162 & 1500 & 1.1038e+01 & 2.50e-01 \\
+        \cmidrule{1-6}
+        \multirow{4}{*}{$(1000, 20)$} & SD + Monotone + Armijo & 64.1133 & 1500 & 3.5839e+01 & 1.70e+01 \\
+        & SD + ZH + BB1 & 9.9855 & 1500 & 2.2576e+01 & 1.15e+00 \\
+        & SD + ZH + BB2 & 5.3146 & 1500 & 2.2114e+01 & 2.93e-01 \\
+        & SD + ZH + BB(Alt) & 5.6319 & 1500 & 2.2034e+01 & 2.27e-01 \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:Q1_G3}
+\end{table}
